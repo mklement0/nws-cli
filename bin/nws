@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+
+kTHIS_NAME=$(basename "$BASH_SOURCE")
+
+unset CDPATH  # to prevent unpredictable `cd` behavior
+
+# Output version number and exit, if requested. Note that the `ver='...'` statement is automatically updated by `make version VER=<newVer>` - DO keep the 'v' suffix in the variable _definition_.
+[[ $1 == '--version' ]] && { declare ver='v0.1.0'; echo "$kTHIS_NAME ${ver#v}"; exit 0; }
+
+# --- BEGIN: functions
+
+# Helper function for exiting with error message due to runtime error.
+#   die [errMsg [exitCode]]
+# Default error message states context and indicates that execution is aborted. Default exit code is 1.
+# Prefix for context is always prepended.
+# Note: An error message is *always* printed; if you just want to exit with a specific code silently, use `exit n` directly.
+die() {
+  echo "$kTHIS_NAME: ERROR: ${1:-"ABORTING due to unexpected error."}" 1>&2
+  exit ${2:-1} # Note: If the argument is non-numeric, the shell prints a warning and uses exit code 255.
+}
+
+# Helper function for exiting with error message due to invalid arguments.
+#   dieSyntax [errMsg]
+# Default error message is provided, as is prefix and suffix; exit code is always 2.
+dieSyntax() {
+  echo "$kTHIS_NAME: ARGUMENT ERROR: ${1:-"Invalid argument(s) specified."} Use -h for help." 1>&2
+  exit 2
+}
+
+# SYNOPSIS
+#   normalizeWhiteSpace [mode]
+# DESCRIPTION
+#   Normalizes whitespace in the input provided via stdin, using one of 4 modes:
+#   All modes behave identically with respect to normalizing individual lines:
+#     Any run of any mix of spaces and tabs is replaced with a single space each, except leading and trailing runs, which are discarded.
+#   Thus, specifying a mode applies only to *multi-line* input (all modes behave the same with single-line input):
+#   0 (default) ... runs of blank (all-whitespace or empty) lines are replaced with 1 empty line each, resulting in paragraph-interal newlines getting preserved, with blank lines at the beginning, between paragraphs, and at the end getting normalized to a single empty line each.
+#   1 ... runs of blank (all-whitespace or empty) lines are discarded, resulting in a single block of non-blank lines.
+#   2 ... like mode 0, except that paragraph-internal newlines are replaced with a single space each, resulting in each paragraph becoming a single line, with 1 empty line between paragraphs.
+#   3 ... normalization includes newlines too, so that any run of any mix of spaces, tabs, and newlines is replaced with a single space each, resulting in a single, long output line.
+# EXAMPLES
+#   normalizeWhiteSpace <<<$' a   b  \t \t'  # -> 'a b'
+#   normalizeWhiteSpace 0 <<<$'\n \n line\t1\n  line  2 \n\nline 3\n\n\n'  # -> $'\nline 1\nline 2\n\nline 3' (0 is optional)
+#   normalizeWhiteSpace 1 <<<$'\n \n line\t1\n  line  2 \n\nline 3\n\n\n'  # -> $'line 1\nline 2\nline 3'
+#   normalizeWhiteSpace 2 <<<$'\n \n line\t1\n  line  2 \n\nline 3\n\n\n'  # -> $'\nline 1 line 2\n\nline 3'
+#   normalizeWhiteSpace 3 <<<$'\n \n line\t1\n  line  2 \n\nline 3\n\n\n'  # -> $'line 1 line 2 line 3'
+normalizeWhiteSpace() {
+  case $1 in
+    0|'') # default: line-interior normalization with leading and trailing runs discarded; runs of blank (all-whitespace or empty) lines replaced with 1 empty line each -> multiple paragraphs with 1 empty line in between
+      awk '{$1=$1; print}' | cat -s # rebuild the line with a space between fields (may result in empty lines), then replace each run of empty lines with a single empty line.
+      ;;
+    1) # line-interior normalization with leading and trailing runs discarded; runs of blank (all-whitespace or empty) lines discarded -> 1 block of non-empty lines
+      awk '{$1=$1} $1!=""' # rebuild the line with a space between fields; if there's at least 1 field, print the rebuilt line.
+      ;;
+    2) # paragraph-interior normalization (across non-empty lines), runs of blank (all-whitespace or empty) lines replaced with 1 empty line each -> each paragraph becomes 1 long line with 1 empty line in between
+      awk '{$1=$1; nonEmpty=($1!=""); printf ((nonEmpty && prevNonEmpty) ? " " : ((NR > 1) ? "\n" : "")); prevNonEmpty=nonEmpty; printf "%s", $0} END { printf "\n" }' | cat -s # rebuild the line with a space between fields (may result in empty lines), then replace each run of empty lines with a single empty line.
+      ;;
+    3) # normalization across *all* types of whitespace, including newlines -> 1 long line
+      awk 'r!="" { printf "%s%s", sep, r; r=""; sep=" " } { $1=$1; if ($1!="") r=$0 } END { if (r!="") printf "%s%s", sep, r }' 
+      printf '\n'
+      ;;
+    *)
+      echo "Unknown normalization mode: '$1'." >&2; return 2
+      ;;
+  esac
+}
+
+# --- END: functions
+
+
+# Command-line help.
+if [[ $1 == '--help' || $1 == '-h' ]]; then
+  cat <<EOF
+SYNOPSIS
+  $kTHIS_NAME [-m mode] [text]
+
+DESCRIPTION
+  $kTHIS_NAME (*n*ormalize *w*hite*s*pace) performs whitespace normalization,
+  offering several modes.
+  
+  Input is provided via one or more operands or, in their absence, via stdin.
+  To disambiguate operands from options, precede operands with '--' as a
+  separate argument.
+  
+  Note that specifying a mode with -m applies only to *multi-line* input.
+  All modes behave identically with respect to normalizing a given single
+  line:
+    Any run of any mix of spaces and tabs is replaced with a single space
+    each, except leading and trailing runs, which are discarded.
+
+  -m mode
+    0 (default) ... runs of blank (all-whitespace or empty) lines are
+      replaced with 1 empty line each, resulting in paragraph-interal
+      newlines getting preserved, with blank lines at the beginning, between
+      paragraphs, and at the end getting normalized to a single empty line
+      each.
+    1 ... runs of blank (all-whitespace or empty) lines are discarded,
+      resulting in a single block of non-blank lines.
+    2 ... like mode 0, except that paragraph-internal newlines are replaced
+      with a single space each, resulting in each paragraph becoming a
+      single line, with 1 empty line between paragraphs.
+    3 ... normalization includes newlines too, so that any run of any mix of
+      spaces, tabs, and newlines is replaced with a single space each,
+      resulting in a single, long output line.
+
+EXAMPLES
+  $kTHIS_NAME $'  one \t\t two  three   ' # -> 'one two three'
+  $kTHIS_NAME <<<$'\n\n  one\n two \n\n\n  three\n\n' # -> $'\none\ntwo\n\nthree\n'
+  $kTHIS_NAME -m 1 <<<$'\n\n  one\n two \n\n\n  three\n\n' # -> $'one\ntwo\nthree'
+  $kTHIS_NAME -m 2 <<<$'\n\n  one\n two \n\n\n  three\n\n' # -> $'\none two\nthree\n'
+  $kTHIS_NAME -m 3 <<<$'  one two\n  three ' # -> 'one two three'
+
+EOF
+    exit 0
+fi
+
+# ----- BEGIN: OPTIONS PARSING: This is MOSTLY generic code, but:
+#  - SET allowOptsAfterOperands AFTER THIS COMMENT TO 1 to ALLOW OPTIONS TO BE MIXED WITH OPERANDS rather than requiring all options to come before the 1st operand, as POSIX mandates.
+#  - The SPECIFIC OPTIONS MUST BE HANDLED IN A CASE ... ESAC STATEMENT BELOW; look for "BEGIN: CUSTOMIZE HERE ... END: CUSTOMIZE HERE"
+#  - Assumes presence of function dieSyntax(); if not present, define as: dieSyntax() { echo "$(basename -- "$BASH_SOURCE"): ARGUMENT ERROR: ${1:-"Invalid argument(s) specified."} Use -h for help." >&2; exit 2; }
+#  - After the end of options parsing, $@ only contains the operands (non-option arguments), if any.
+allowOptsAfterOperands=1 operands=() i=0 optName= isLong=0 prefix= optArg= haveOptArgAttached=0 haveOptArgAsNextArg=0 acceptOptArg=0 needOptArg=0 optsSpecified=0
+while (( $# )); do
+  if [[ $1 =~ ^(-)[a-zA-Z0-9]+.*$ || $1 =~ ^(--)[a-zA-Z0-9]+.*$ ]]; then # an option: either a short option / multiple short options in compressed form or a long option
+    prefix=${BASH_REMATCH[1]}; [[ $prefix == '--' ]] && isLong=1 || isLong=0
+    for (( i = 1; i < (isLong ? 2 : ${#1}); i++ )); do
+        acceptOptArg=0 needOptArg=0 haveOptArgAttached=0 haveOptArgAsNextArg=0 optArgAttached= optArgOpt= optArgReq=
+        if (( isLong )); then # long option: parse into name and, if present, argument
+          optName=${1:2}
+          [[ $optName =~ ^([^=]+)=(.*)$ ]] && { optName=${BASH_REMATCH[1]}; optArgAttached=${BASH_REMATCH[2]}; haveOptArgAttached=1; }
+        else # short option: *if* it takes an argument, the rest of the string, if any, is by definition the argument.
+          optName=${1:i:1}; optArgAttached=${1:i+1}; (( ${#optArgAttached} >= 1 )) && haveOptArgAttached=1
+        fi
+        (( haveOptArgAttached )) && optArgOpt=$optArgAttached optArgReq=$optArgAttached || { (( $# > 1 )) && { optArgReq=$2; haveOptArgAsNextArg=1; }; }
+        optsSpecified=1
+        # ---- BEGIN: CUSTOMIZE HERE
+        case $optName in
+          m|norm-mode)
+            needOptArg=1
+            nwsMode=$optArgReq
+            case $nwsMode in
+              0|1|2|3)
+                :
+                ;;
+              *)
+                dieSyntax "Unknown mode specified: '$nwsMode'."
+                ;;
+            esac
+            ;;
+          *)            
+            dieSyntax "Unknown option: ${prefix}${optName}."
+            ;;
+        esac
+        # ---- END: CUSTOMIZE HERE
+        (( needOptArg )) && { (( ! haveOptArgAttached && ! haveOptArgAsNextArg )) && dieSyntax "Option ${prefix}${optName} is missing its argument." || (( haveOptArgAsNextArg )) && shift; }
+        (( acceptOptArg || needOptArg )) && break
+    done
+  else # an operand
+    if [[ $1 == '--' ]]; then
+      shift; operands+=( "$@" ); break
+    elif (( allowOptsAfterOperands )); then
+      operands+=( "$1" ) # continue 
+    else
+      operands=( "$@" )
+      break
+    fi
+  fi
+  shift
+done
+(( "${#operands[@]}" > 0 )) && set -- "${operands[@]}"; unset allowOptsAfterOperands operands i optName isLong prefix optArgAttached haveOptArgAttached haveOptArgAsNextArg acceptOptArg needOptArg
+# ----- END: OPTIONS PARSING: "$@" now contains all operands (non-option arguments).
+
+# Gather the input: remaining operand(s) OR stdin:
+if (( $# )); then
+  txt=$*
+else # read from stdin    
+  IFS= read -rd $'\x04' txt # !! The $'\x04' is required to support ^D to terminate *interactive* input.
+fi
+
+# Do nothing, if the input is empty.
+(( ${#txt} > 0 )) || exit 0
+
+normalizeWhiteSpace $nwsMode < <(printf %s "$txt") || die

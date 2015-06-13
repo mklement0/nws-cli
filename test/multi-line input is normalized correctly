@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+# ---
+# IMPORTANT: Use the following statement at the TOP OF EVERY TEST SCRIPT
+#            to ensure that this package's 'bin/' subfolder is added to the path so that
+#            this package's CLIs can be invoked by their mere filename in the rest
+#            of the script.
+# ---
+PATH=${PWD%%/test*}/bin:$PATH
+
+# Helper function for error reporting.
+die() { (( $# > 0 )) && echo "$*" >&2; exit 1; }
+
+tmpFile=./nws-playground
+
+  # Create playground file
+cat <<EOF > "$tmpFile"
+
+    $(printf '\t')
+  
+one
+  two  
+
+   $(printf '\t')
+
+three
+
+
+EOF
+
+  # Multi-line normalization in default mode (should be mode 0(:
+  # In addition to line-internal normalization, 
+  # fold runs of blank/empty lines into 1 empty line each.
+diff <(nws < "$tmpFile" | cat -et) - <<'EOF' || die "Unexpected default mode output."
+$
+one$
+two$
+$
+three$
+$
+EOF
+
+  # Multi-line normalization in explicit mode 0:
+  # In addition to line-internal normalization, 
+  # fold runs of blank/empty lines into 1 empty line each.
+diff <(nws -m 0 < "$tmpFile" | cat -et) - <<'EOF' || die "Unexpected mode 0 output."
+$
+one$
+two$
+$
+three$
+$
+EOF
+
+  # Multi-line normalization in mode 1:
+  # In addition to line-internal normalization, 
+  # remove all blank/empty lines.
+diff <(nws -m 1 < "$tmpFile" | cat -et) - <<'EOF' || die "Unexpected mode 1 output."
+one$
+two$
+three$
+EOF
+
+
+  # Multi-line normalization in mode 2:
+  # In addition to line-internal normalization, 
+  # join paragraph-internal lines with a space each.
+diff <(nws -m 2 < "$tmpFile" | cat -et) - <<'EOF' || die "Unexpected mode 1 output."
+$
+one two$
+$
+three$
+$
+EOF
+
+  # Multi-line normalization in mode 3:
+  # In addition to line-internal normalization, 
+  # join all non-empty/non-blank lines with a space each
+  # to form a single, long line.
+diff <(nws -m 3 < "$tmpFile" | cat -et) - <<'EOF' || die "Unexpected mode 1 output."
+one two three$
+EOF
+

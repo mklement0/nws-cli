@@ -1,0 +1,48 @@
+{
+  "name": "nws-cli",
+  "description": "a Unix CLI that normalizes whitespace in text",
+  "private": false,
+  "version": "0.1.0",
+  "os": [
+    "linux",
+    "darwin"
+  ],
+  "preferGlobal": true,
+  "bin": {
+    "nws": "bin/nws"
+  },
+  "homepage": "https://github.com/mklement0/nws-cli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mklement0/nws-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mklement0/nws-cli/issues"
+  },
+  "scripts": {
+    "test": "make test"
+  },
+  "keywords": [
+    "normalize",
+    "whitespace",
+    "text",
+    "reformat",
+    "cli"
+  ],
+  "author": "Michael Klement <mklement0@gmail.com> (http://same2u.net)",
+  "license": "MIT",
+  "net_same2u": {
+    "make_pkg": {
+      "tocOn": true,
+      "tocTitle": "**Contents**"
+    }
+  },
+  "devDependencies": {
+    "doctoc": "^0.13.0",
+    "json": "^9.0.3",
+    "replace": "^0.3.0",
+    "semver": "^4.2.0",
+    "tap": "^0.6.0",
+    "urchin": "^0.0.5"
+  }
+}
