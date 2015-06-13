@@ -33,12 +33,14 @@ The mode matters with multi-line input; see the [examples](#examples) below or t
 
 Note:
 
- * The examples are piped to `cat -et` to better illustrate the output; `cat -et` shows line endings as `$` (and control chars. as `^M<char>`; e.g., a tab would show as `^I`).
- * Some examples use [ANSI C-quoted string](http://www.gnu.org/software/bash/manual/bash.html#ANSI_002dC-Quoting) (`$'...'`), available in Bash, Ksh, and Zsh to create multi-line strings and/or string with tabs with escape sequences `\n` and `\t`.
+ * Output from the example commands is piped to `cat -et` to better illustrate the output; `cat -et` shows line endings as `$` (and control chars. as `^M<char>`; e.g., a tab would show as `^I`).
 
 ```shell
   # Single-line normalization
-> nws $' I \t\t will   be normalized.\t' | cat -et 
+> nws '    I   will   be normalized.   ' | cat -et 
+I will be normalized.$
+  # Ditto, but with a mix of spaces and tabs.
+> nws "$(printf ' I \t\t will   be normalized.\t\t')" | cat -et 
 I will be normalized.$
 
   # Create demo file.
@@ -194,6 +196,9 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.1.3](https://github.com/mklement0/nws-cli/compare/v0.1.2...v0.1.3)** (2015-06-13):
+  * [doc] Read-me improvements.
 
 * **[v0.1.2](https://github.com/mklement0/nws-cli/compare/v0.1.1...v0.1.2)** (2015-06-13):
   * [doc] Read-me improvements.

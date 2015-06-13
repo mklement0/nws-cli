@@ -2,7 +2,7 @@
   "name": "nws-cli",
   "description": "a Unix CLI that normalizes whitespace in text",
   "private": false,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "os": [
     "linux",
     "darwin"
