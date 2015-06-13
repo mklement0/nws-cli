@@ -5,7 +5,7 @@ kTHIS_NAME=$(basename "$BASH_SOURCE")
 unset CDPATH  # to prevent unpredictable `cd` behavior
 
 # Output version number and exit, if requested. Note that the `ver='...'` statement is automatically updated by `make version VER=<newVer>` - DO keep the 'v' suffix in the variable _definition_.
-[[ $1 == '--version' ]] && { declare ver='v0.1.0'; echo "$kTHIS_NAME ${ver#v}"; exit 0; }
+[[ $1 == '--version' ]] && { declare ver='v0.1.1'; echo "$kTHIS_NAME ${ver#v}"; exit 0; }
 
 # --- BEGIN: functions
 

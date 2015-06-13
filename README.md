@@ -38,11 +38,11 @@ Note:
 
 ```shell
   # Single-line normalization
-$ nws $' I \t\t will   become normal.\t' | cat -et 
+> nws $' I \t\t will   be normalized.\t' | cat -et 
 I will become normal.$
 
   # Create playground file
-cat <<EOF > /tmp/nws-playground
+> cat <<EOF > /tmp/nws-playground
 
     $(printf '\t')
   
@@ -59,7 +59,7 @@ EOF
   # Multi-line normalization in default mode, 0:
   # In addition to line-internal normalization, 
   # fold runs of blank/empty lines into 1 empty line each.
-$ nws < /tmp/nws-playground | cat -et
+> nws < /tmp/nws-playground | cat -et
 $
 one$
 two$
@@ -70,7 +70,7 @@ $
   # Multi-line normalization in mode 1:
   # In addition to line-internal normalization, 
   # remove all blank/empty lines.
-$ nws -m 1 < /tmp/nws-playground | cat -et
+> nws -m 1 < /tmp/nws-playground | cat -et
 one$
 two$
 three$
@@ -78,7 +78,7 @@ three$
   # Multi-line normalization in mode 2:
   # In addition to line-internal normalization, 
   # join paragraph-internal lines with a space each.
-$ nws -m 2 < /tmp/nws-playground | cat -et
+> nws -m 2 < /tmp/nws-playground | cat -et
 $
 one two$
 $
@@ -89,7 +89,7 @@ $
   # In addition to line-internal normalization, 
   # join all non-empty/non-blank lines with a space each
   # to form a single, long line.
-$ nws -m 3 < /tmp/nws-playground | cat -et
+> nws -m 3 < /tmp/nws-playground | cat -et
 one two three$
 ```
 
@@ -194,6 +194,9 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.1.1](https://github.com/mklement0/nws-cli/compare/v0.1.0...v0.1.1)** (2015-06-13):
+  * [doc] Read-me improvements.
 
 * **v0.1.0** (2015-06-13):
   * Initial release.
