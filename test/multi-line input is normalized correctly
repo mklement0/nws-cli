@@ -11,10 +11,10 @@ PATH=${PWD%%/test*}/bin:$PATH
 # Helper function for error reporting.
 die() { (( $# > 0 )) && echo "$*" >&2; exit 1; }
 
-tmpFile=./nws-playground
+tmpFile=/tmp/nws-playground-$$
 
   # Create playground file
-cat <<EOF > "$tmpFile"
+cat <<EOF > "$tmpFile" || die "Could not create temp. file: '$tmpFile'"
 
     $(printf '\t')
   
