@@ -11,9 +11,9 @@ PATH=${PWD%%/test*}/bin:$PATH
 # Helper function for error reporting.
 die() { (( $# > 0 )) && echo "$*" >&2; exit 1; }
 
-tmpFile=/tmp/nws-playground-$$
+tmpFile=/tmp/nws-test-$$
 
-  # Create playground file
+  # Create test file
 cat <<EOF > "$tmpFile" || die "Could not create temp. file: '$tmpFile'"
 
     $(printf '\t')
@@ -28,7 +28,7 @@ three
 
 EOF
 
-  # Multi-line normalization in default mode (should be mode 0(:
+  # Multi-line normalization in default mode (should be mode 0):
   # In addition to line-internal normalization, 
   # fold runs of blank/empty lines into 1 empty line each.
 diff <(nws < "$tmpFile" | cat -et) - <<'EOF' || die "Unexpected default mode output."
