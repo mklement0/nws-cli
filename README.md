@@ -123,7 +123,7 @@ With [Node.js](http://nodejs.org/) or [io.js](https://iojs.org/) installed, inst
 
 <!-- DO NOT EDIT THE FENCED CODE BLOCK and RETAIN THIS COMMENT: The fenced code block below is updated by `make update-readme/release` with CLI usage information. -->
 
-```
+```nohighlight
 $ nws --help
 
 SYNOPSIS
@@ -145,7 +145,7 @@ DESCRIPTION
 
   -m mode
     0 (default) ... runs of blank (all-whitespace or empty) lines are
-      replaced with 1 empty line each, resulting in paragraph-interal
+      replaced with 1 empty line each, resulting in paragraph-internal
       newlines getting preserved, with blank lines at the beginning, between
       paragraphs, and at the end getting normalized to a single empty line
       each.
@@ -196,6 +196,9 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.1.4](https://github.com/mklement0/nws-cli/compare/v0.1.3...v0.1.4)** (2015-09-15):
+  * [dev] Makefile improvements; various other behind-the-scenes tweaks.
 
 * **[v0.1.3](https://github.com/mklement0/nws-cli/compare/v0.1.2...v0.1.3)** (2015-06-13):
   * [doc] Read-me improvements.

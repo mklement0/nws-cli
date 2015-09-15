@@ -81,3 +81,4 @@ diff <(nws -m 3 < "$tmpFile" | cat -et) - <<'EOF' || die "Unexpected mode 1 outp
 one two three$
 EOF
 
+rm -f "$tmpFile"

@@ -16,7 +16,7 @@ die() { (( $# > 0 )) && echo "$*" >&2; exit 1; }
 # and causes this test to fail.
 # See https://github.com/tlevine/urchin.
 
-nws --version | egrep -w '[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+' && exit 0
+nws --version | grep -Ew 'v?[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+' && exit 0
 
 die "ERROR: No semver-compliant version number detected in the output."
 

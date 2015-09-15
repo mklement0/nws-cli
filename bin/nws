@@ -5,7 +5,7 @@ kTHIS_NAME=$(basename "$BASH_SOURCE")
 unset CDPATH  # to prevent unpredictable `cd` behavior
 
 # Output version number and exit, if requested. Note that the `ver='...'` statement is automatically updated by `make version VER=<newVer>` - DO keep the 'v' suffix in the variable _definition_.
-[[ $1 == '--version' ]] && { declare ver='v0.1.3'; echo "$kTHIS_NAME ${ver#v}"; exit 0; }
+[[ $1 == '--version' ]] && { declare ver='v0.1.4'; echo "$kTHIS_NAME ${ver}"$'\nFor license information and more, visit https://github.com/mklement0/nws-cli'; exit 0; }
 
 # --- BEGIN: functions
 
@@ -34,7 +34,7 @@ dieSyntax() {
 #   All modes behave identically with respect to normalizing individual lines:
 #     Any run of any mix of spaces and tabs is replaced with a single space each, except leading and trailing runs, which are discarded.
 #   Thus, specifying a mode applies only to *multi-line* input (all modes behave the same with single-line input):
-#   0 (default) ... runs of blank (all-whitespace or empty) lines are replaced with 1 empty line each, resulting in paragraph-interal newlines getting preserved, with blank lines at the beginning, between paragraphs, and at the end getting normalized to a single empty line each.
+#   0 (default) ... runs of blank (all-whitespace or empty) lines are replaced with 1 empty line each, resulting in paragraph-internal newlines getting preserved, with blank lines at the beginning, between paragraphs, and at the end getting normalized to a single empty line each.
 #   1 ... runs of blank (all-whitespace or empty) lines are discarded, resulting in a single block of non-blank lines.
 #   2 ... like mode 0, except that paragraph-internal newlines are replaced with a single space each, resulting in each paragraph becoming a single line, with 1 empty line between paragraphs.
 #   3 ... normalization includes newlines too, so that any run of any mix of spaces, tabs, and newlines is replaced with a single space each, resulting in a single, long output line.
@@ -90,7 +90,7 @@ DESCRIPTION
 
   -m mode
     0 (default) ... runs of blank (all-whitespace or empty) lines are
-      replaced with 1 empty line each, resulting in paragraph-interal
+      replaced with 1 empty line each, resulting in paragraph-internal
       newlines getting preserved, with blank lines at the beginning, between
       paragraphs, and at the end getting normalized to a single empty line
       each.
