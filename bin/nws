@@ -1,11 +1,101 @@
 #!/usr/bin/env bash
 
-kTHIS_NAME=$(basename "$BASH_SOURCE")
+# --- STANDARD SCRIPT-GLOBAL CONSTANTS
 
-unset CDPATH  # to prevent unpredictable `cd` behavior
+kTHIS_NAME=${BASH_SOURCE##*/}
+kTHIS_HOMEPAGE='https://github.com/mklement0/nws-cli'
+kTHIS_VERSION='v0.2.0' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
 
-# Output version number and exit, if requested. Note that the `ver='...'` statement is automatically updated by `make version VER=<newVer>` - DO keep the 'v' suffix in the variable _definition_.
-[[ $1 == '--version' ]] && { declare ver='v0.1.4'; echo "$kTHIS_NAME ${ver}"$'\nFor license information and more, visit https://github.com/mklement0/nws-cli'; exit 0; }
+unset CDPATH  # To prevent unexpected `cd` behavior.
+
+# --- Begin: STANDARD HELPER FUNCTIONS
+
+die() { echo "$kTHIS_NAME: ERROR: ${1:-"ABORTING due to unexpected error."}" 1>&2; exit ${2:-1}; }
+dieSyntax() { echo "$kTHIS_NAME: ARGUMENT ERROR: ${1:-"Invalid argument(s) specified."} Use -h for help." 1>&2; exit 2; }
+
+# SYNOPSIS
+#   openUrl <url>
+# DESCRIPTION
+#   Opens the specified URL in the system's default browser.
+openUrl() {
+  local url=$1 platform=$(uname) cmd=()
+  case $platform in
+    'Darwin') # OSX
+      cmd=( open "$url" )
+      ;;
+    'CYGWIN_'*) # Cygwin on Windows; must call cmd.exe with its `start` builtin
+      cmd=( cmd.exe /c start '' "$url " )  # !! Note the required trailing space.
+      ;;
+    'MINGW32_'*) # MSYS or Git Bash on Windows; they come with a Unix `start` binary
+      cmd=( start '' "$url" )
+      ;;
+    *) # Otherwise, assume a Freedesktop-compliant OS, which includes many Linux distros, PC-BSD, OpenSolaris, ...
+      cmd=( xdg-open "$url" )
+      ;; 
+  esac
+  "${cmd[@]}" || { echo "Cannot locate or failed to open default browser; please go to '$url' manually." >&2; return 1; }
+}
+
+# Prints the embedded Markdown-formatted man-page source to stdout.
+printManPageSource() {
+  sed -n -e $'/^: <<\'EOF_MAN_PAGE\'/,/^EOF_MAN_PAGE/ { s///; t\np;}' "$BASH_SOURCE"
+}
+
+# Opens the man page, if installed; otherwise, tries to display the embedded Markdown-formatted man-page source; if all else fails: tries to display the man page online.
+openManPage() {
+  local pager embeddedText 
+  if ! man 1 "$kTHIS_NAME" 2>/dev/null; then
+    # 2nd attempt: if present, display the embedded Markdown-formatted man-page source
+    embeddedText=$(printManPageSource)
+    if [[ -n $embeddedText ]]; then
+      pager='more'
+      command -v less &>/dev/null && pager='less' # see if the non-standard `less` is available, because it's preferable to the POSIX utility `more`
+      printf '%s\n' "$embeddedText" | "$pager"
+    else # 3rd attempt: open the the man page on the utility's website
+      openUrl "${kTHIS_HOMEPAGE}/doc/${kTHIS_NAME}.md"
+    fi
+  fi  
+}
+
+# Prints the contents of the synopsis chapter of the embedded Markdown-formatted man-page source for quick reference.
+printUsage() {
+  local embeddedText
+  # Extract usage information from the SYNOPSIS chapter of the embedded Markdown-formatted man-page source.
+  embeddedText=$(sed -n -e $'/^: <<\'EOF_MAN_PAGE\'/,/^EOF_MAN_PAGE/!d; /^## SYNOPSIS$/,/^#/{ s///; t\np; }' "$BASH_SOURCE")
+  if [[ -n $embeddedText ]]; then
+    # Print extracted synopsis chapter - remove backticks for uncluttered display.
+    printf '%s\n\n' "$embeddedText" | tr -d '`'
+  else # No SYNOPIS chapter found; fall back to displaying the man page.
+    echo "WARNING: usage information not found; opening man page instead." >&2
+    openManPage
+  fi
+}
+
+# --- End: STANDARD HELPER FUNCTIONS
+
+# ---  PROCESS STANDARD, OUTPUT-INFO-THEN-EXIT OPTIONS.
+case $1 in
+  --version)
+    # Output version number and exit, if requested.
+    echo "$kTHIS_NAME $kTHIS_VERSION"$'\nFor license information and more, visit '"$kTHIS_HOMEPAGE"; exit 0
+    ;;
+  -h|--help)
+    # Print usage information and exit.
+    printUsage; exit
+    ;;
+  --man)
+    # Display the manual page and exit, falling back to printing the embedded man-page source.
+    openManPage; exit
+    ;;
+  --man-source) # private option, used by `make update-man`
+    # Print raw, embedded Markdown-formatted man-page source and exit
+    printManPageSource; exit
+    ;;
+  --home)
+    # Open the home page and exit.
+    openUrl "$kTHIS_HOMEPAGE"; exit
+    ;;
+esac
 
 # --- BEGIN: functions
 
@@ -67,52 +157,7 @@ normalizeWhiteSpace() {
 
 # --- END: functions
 
-
-# Command-line help.
-if [[ $1 == '--help' || $1 == '-h' ]]; then
-  cat <<EOF
-SYNOPSIS
-  $kTHIS_NAME [-m mode] [text]
-
-DESCRIPTION
-  $kTHIS_NAME (*n*ormalize *w*hite*s*pace) performs whitespace normalization,
-  offering several modes.
-  
-  Input is provided via one or more operands or, in their absence, via stdin.
-  To disambiguate operands from options, precede operands with '--' as a
-  separate argument.
-  
-  Note that specifying a mode with -m applies only to *multi-line* input.
-  All modes behave identically with respect to normalizing a given single
-  line:
-    Any run of any mix of spaces and tabs is replaced with a single space
-    each, except leading and trailing runs, which are discarded.
-
-  -m mode
-    0 (default) ... runs of blank (all-whitespace or empty) lines are
-      replaced with 1 empty line each, resulting in paragraph-internal
-      newlines getting preserved, with blank lines at the beginning, between
-      paragraphs, and at the end getting normalized to a single empty line
-      each.
-    1 ... runs of blank (all-whitespace or empty) lines are discarded,
-      resulting in a single block of non-blank lines.
-    2 ... like mode 0, except that paragraph-internal newlines are replaced
-      with a single space each, resulting in each paragraph becoming a
-      single line, with 1 empty line between paragraphs.
-    3 ... normalization includes newlines too, so that any run of any mix of
-      spaces, tabs, and newlines is replaced with a single space each,
-      resulting in a single, long output line.
-
-EXAMPLES
-  $kTHIS_NAME $'  one \t\t two  three   ' # -> 'one two three'
-  $kTHIS_NAME <<<$'\n\n  one\n two \n\n\n  three\n\n' # -> $'\none\ntwo\n\nthree\n'
-  $kTHIS_NAME -m 1 <<<$'\n\n  one\n two \n\n\n  three\n\n' # -> $'one\ntwo\nthree'
-  $kTHIS_NAME -m 2 <<<$'\n\n  one\n two \n\n\n  three\n\n' # -> $'\none two\nthree\n'
-  $kTHIS_NAME -m 3 <<<$'  one two\n  three ' # -> 'one two three'
-
-EOF
-    exit 0
-fi
+# --- MAIN BODY
 
 # ----- BEGIN: OPTIONS PARSING: This is MOSTLY generic code, but:
 #  - SET allowOptsAfterOperands AFTER THIS COMMENT TO 1 to ALLOW OPTIONS TO BE MIXED WITH OPERANDS rather than requiring all options to come before the 1st operand, as POSIX mandates.
@@ -134,23 +179,47 @@ while (( $# )); do
         (( haveOptArgAttached )) && optArgOpt=$optArgAttached optArgReq=$optArgAttached || { (( $# > 1 )) && { optArgReq=$2; haveOptArgAsNextArg=1; }; }
         optsSpecified=1
         # ---- BEGIN: CUSTOMIZE HERE
+        nwsMode= handled=0
         case $optName in
-          m|norm-mode)
+          m|mode)
             needOptArg=1
             nwsMode=$optArgReq
-            case $nwsMode in
-              0|1|2|3)
-                :
-                ;;
-              *)
-                dieSyntax "Unknown mode specified: '$nwsMode'."
-                ;;
-            esac
             ;;
-          *)            
-            dieSyntax "Unknown option: ${prefix}${optName}."
+          *)  # We also accept the mode as direct options, so that --mode fp is identical to --fp
+            nwsMode=$optName
             ;;
         esac
+        if [[ -n $nwsMode ]]; then
+          handled=1
+          case $nwsMode in
+            0|1|2|3) # !! We still accept the numerical modes, but they're deprecated and no longer documented.
+              :
+              ;;
+            mp|multi-para)
+              nwsMode=0
+              ;;
+            sp|single-para)
+              nwsMode=1
+              ;;
+            fp|flat-para)
+              nwsMode=2
+              ;;
+            sl|single-line)
+              nwsMode=3
+              ;;              
+            *)
+              (( needOptArg )) && dieSyntax "Unknown mode specified: '$nwsMode'."
+              handled=0
+              ;;
+          esac
+        fi
+        if (( ! handled )); then
+          case $optName in
+            *)            
+              dieSyntax "Unknown option: ${prefix}${optName}."
+              ;;
+          esac
+        fi
         # ---- END: CUSTOMIZE HERE
         (( needOptArg )) && { (( ! haveOptArgAttached && ! haveOptArgAsNextArg )) && dieSyntax "Option ${prefix}${optName} is missing its argument." || (( haveOptArgAsNextArg )) && shift; }
         (( acceptOptArg || needOptArg )) && break
@@ -181,3 +250,171 @@ fi
 (( ${#txt} > 0 )) || exit 0
 
 normalizeWhiteSpace $nwsMode < <(printf %s "$txt") || die
+
+####
+# MAN PAGE MARKDOWN SOURCE
+#  - Place a Markdown-formatted version of the man page for this script
+#    inside the here-document below.
+#    The document must be formatted to look good in all 3 viewing scenarios:
+#     - as a man page, after conversion to ROFF with marked-man
+#     - as plain text (raw Markdown source)
+#     - as HTML (rendered Markdown)
+#  Markdown formatting tips:
+#   - GENERAL
+#     To support plain-text rendering in the terminal, limit all lines to 80 chars.,
+#     and, for similar rendering as HTML, *end every line with 2 trailing spaces*.
+#   - HEADINGS
+#     - For better plain-text rendering, leave an empty line after a heading
+#       marked-man will remove it from the ROFF version.
+#     - The first heading must be a level-1 heading containing the utility
+#       name and very brief description; append the manual-section number 
+#       directly to the CLI name; e.g.:
+#         # foo(1) - does bar
+#     - The 2nd, level-2 heading must be '## SYNOPSIS' and the chapter's body
+#       must render reasonably as plain text, because it is printed to stdout
+#       when  `-h`, `--help` is specified:
+#         Use 4-space indentation without markup for both the syntax line and the
+#         block of brief option descriptions; represent option-arguments and operands
+#         in angle brackets; e.g., '<foo>'
+#     - All other headings should be level-2 headings in ALL-CAPS.
+#   - TEXT
+#      - Use NO indentation for regular chapter text; if you do, it will 
+#        be indented further than list items.
+#      - Use 4-space indentation, as usual, for code blocks.
+#      - Markup character-styling markup translates to ROFF rendering as follows:
+#         `...` and **...** render as bolded (red) text
+#         _..._ and *...* render as word-individually underlined text
+#   - LISTS
+#      - Indent list items by 2 spaces for better plain-text viewing, but note
+#        that the ROFF generated by marked-man still renders them unindented.
+#      - End every list item (bullet point) itself with 2 trailing spaces too so
+#        that it renders on its own line.
+#      - Avoid associating more than 1 paragraph with a list item, if possible,
+#        because it requires the following trick, which hampers plain-text readability:
+#        Use '&nbsp;<space><space>' in lieu of an empty line.
+####
+: <<'EOF_MAN_PAGE'
+# nws(1) - normalize whitespace
+
+## SYNOPSIS
+
+Normalizes whitespace in one of several modes.
+
+    nws [-m <mode>] [<text>...]
+
+`<mode>` values (treatment of newlines in multi-line input):
+
+    mp   (default) multi-paragraph: fold multiple blank lines into one
+    fp   flattened multi-paragraph: normalize each paragraph to single line
+    sp   single-paragraph: remove all blank lines.
+    sl   single-line: normalize to single output line
+
+Alternatively, specify mode values directly as options; e.g., `--sp` in lieu  
+of `-m sp`
+
+Standard options: `--help`, `--man`, `--version`, `--home`
+
+## DESCRIPTION
+
+`nws` (*n*ormalize *w*hite*s*pace) performs whitespace normalization,  
+offering several modes.
+
+Input is provided via one or more operands or, in their absence, via stdin.  
+To disambiguate operands from options, precede operands with `--` as a  
+separate argument.
+
+Specifying a mode with option `-m` applies only to *multi-line* input;  
+all modes behave identically with respect to normalizing a given single  
+line, namely:  
+Any run of any mix of spaces and tabs is replaced with a single space  
+each, except leading and trailing runs, which are discarded.
+
+## OPTIONS
+
+  * `-m <mode>` or `--mode <mode>`  
+    where `<mode>` is one of:
+
+    * `mp`, `multi-para` (default)  
+      Runs of blank (all-whitespace or empty) lines are replaced with 1 empty  
+      line each, resulting in paragraph-internal newlines getting preserved,  
+      with blank lines at the beginning, between paragraphs, and at the end  
+      getting normalized to a single empty line each.  
+
+    * `fp`, `flat-para`  
+      Like mode `mp`, except that paragraph-internal newlines are replaced  
+      with a single space each, resulting in each paragraph becoming a  
+      single line, with 1 empty line between paragraphs.  
+
+    * `sp`, `single-para`  
+      Runs of blank (all-whitespace or empty) lines are discarded, resulting  
+      in a single paragraph of non-blank lines.
+
+    * `sl`, `single-line`  
+      Normalization includes newlines too, so that any run of any mix of  
+      spaces, tabs, and newlines is replaced with a single space each,  
+      resulting in a single, long output line.
+
+You may specify mode values as options directly; e.g., `--fp` or `--flat-para`  
+in lieu of  `-m fp` or `--mode fp` or `--mode flat-para`.
+
+## STANDARD OPTIONS
+
+All standard options provide information only.
+
+ * `-h, --help`  
+   Prints the contents of the synopsis chapter to stdout for quick reference.
+
+ * `--man`  
+   Displays this manual page, which is a helpful alternative to using `man`,  
+   if the manual page isn't installed.
+
+ * `--version`  
+   Prints version information.
+  
+ * `--home`  
+   Opens this utility's home page in the system's default web browser.
+
+## LICENSE
+
+For license information, bug reports, and more, visit this utility's home page  
+by running `nws --home`
+
+## EXAMPLES
+    
+The examples use ANSI C-quoted input strings (`$'...'`) for brevity, which  
+are supported in Bash, Ksh, and Zsh.  
+Empty output lines are represented by `~`.
+
+    # Single-line input - no mode needed.
+    $ nws $'  one \t\t two  three   '
+    one two three
+
+    # Default: multi-paragraph mode (`-m mp` or `--mode multi-para`)
+    $ nws <<<$'\n\n  one\n two \n\n\n  three\n\n'
+    ~
+    one
+    two
+    ~
+    three
+    ~
+
+    # Single-paragraph mode; `-m sp` is the short equivalent of
+    # `--mode single-para`.
+    $ nws -m sp <<<$'\n\n  one\n two \n\n\n  three\n\n'
+    one
+    two
+    three
+
+    # Flattened-paragraph mode; note use of shorcut option `--fp` for `-m fp`.
+    nws --fp <<<$'\n\n  one\n two \n\n\n  three\n\n'
+    ~
+    one two
+    ~
+    three
+    ~
+
+    # Single-line mode
+    $ nws --sl <<<$'  one two\n  three '
+    one two three
+
+EOF_MAN_PAGE

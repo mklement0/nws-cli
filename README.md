@@ -8,7 +8,7 @@
 - [nws &mdash; introduction](#nws-&mdash-introduction)
 - [Examples](#examples)
 - [Installation](#installation)
-  - [From the npm registry](#from-the-npm-registry)
+  - [Installation from the npm registry](#installation-from-the-npm-registry)
   - [Manual installation](#manual-installation)
 - [Usage](#usage)
 - [License](#license)
@@ -22,12 +22,14 @@
 
 `nws` is a Unix CLI that normalizes whitespace in text, offering several modes.
 
-Input can be provided either via arguments or via stdin.
-
-All modes behave identically with respect to normalizing a given _single_ line:  
+Choosing a mode only applies to multi-line input;
+all modes behave identically with respect to normalizing a given _single_ line:  
 Any run of any mix of spaces and tabs is replaced with a single space each, except leading and trailing runs, which are discarded.
 
-The mode matters with multi-line input; see the [examples](#examples) below or the [usage](#usage) chapter for details.
+Input can be provided either via arguments or via stdin.
+
+See the examples below, get concise [usage](#usage) information further below,
+or read the [manual](doc/nws.md).
 
 # Examples
 
@@ -36,12 +38,15 @@ Note:
  * Output from the example commands is piped to `cat -et` to better illustrate the output; `cat -et` shows line endings as `$` (and control chars. as `^M<char>`; e.g., a tab would show as `^I`).
 
 ```shell
-  # Single-line normalization
+# -- Single-input-line normalization (mode option doesn't apply).
+
 > nws '    I   will   be normalized.   ' | cat -et 
 I will be normalized.$
   # Ditto, but with a mix of spaces and tabs.
 > nws "$(printf ' I \t\t will   be normalized.\t\t')" | cat -et 
 I will be normalized.$
+
+# -- Multi-input-line normalizations, using different modes.
 
   # Create demo file.
 > cat <<EOF > /tmp/nws-demo
@@ -58,7 +63,8 @@ three
 
 EOF
 
-  # Multi-line normalization in default mode, 0:
+  # Multi-paragraph mode - by default, or with `--mp` or `-m mp` or 
+  # `--mode multi-para`.
   # In addition to line-internal normalization, 
   # folds runs of blank/empty lines into 1 empty line each.
 > nws < /tmp/nws-demo | cat -et
@@ -69,29 +75,29 @@ $
 three$
 $
 
-  # Multi-line normalization in mode 1:
+  # Single-paragraph mode: `--sp` or `-m sp` or `--mode single-para`
   # In addition to line-internal normalization, 
   # removes all blank/empty lines.
-> nws -m 1 < /tmp/nws-demo | cat -et
+> nws --sp < /tmp/nws-demo | cat -et
 one$
 two$
 three$
 
-  # Multi-line normalization in mode 2:
+  # Flattened-multi-pargraph mode: `--fp` or `-m fp` or `--mode flat-para`
   # In addition to line-internal normalization, 
   # joins paragraph-internal lines with a space each.
-> nws -m 2 < /tmp/nws-demo | cat -et
+> nws --fp < /tmp/nws-demo | cat -et
 $
 one two$
 $
 three$
 $
 
-  # Multi-line normalization in mode 3:
+  # Single-output-line mode: `sl` or `-m sl` or `--mode single-line`.
   # In addition to line-internal normalization, 
   # joins all non-empty/non-blank lines with a space each
-  # to form a single, long line.
-> nws -m 3 < /tmp/nws-demo | cat -et
+  # to form a single, long output line.
+> nws --sl < /tmp/nws-demo | cat -et
 one two three$
 ```
 
@@ -102,7 +108,9 @@ one two three$
 * When installing from the **npm registry**: **Linux** and **OSX**
 * When installing **manually**: any **Unix-like** platform with **Bash** and **POSIX-compatible utilities**.
 
-## From the npm registry
+## Installation from the npm registry
+
+<sup>Note: Even if you don't use Node.js, its package manager, `npm`, works across platforms and is easy to install; try [`curl -L http://git.io/n-install | bash`](https://github.com/mklement0/n-install)</sup>
 
 With [Node.js](http://nodejs.org/) or [io.js](https://iojs.org/) installed, install [the package](https://www.npmjs.com/package/nws-cli) as follows:
 
@@ -121,49 +129,30 @@ With [Node.js](http://nodejs.org/) or [io.js](https://iojs.org/) installed, inst
 
 # Usage
 
+Find concise usage information below; for complete documentation, read the [manual online](doc/nws.md) or,
+once installed, run `man nws` (`nws --man` if installed manually).
+
 <!-- DO NOT EDIT THE FENCED CODE BLOCK and RETAIN THIS COMMENT: The fenced code block below is updated by `make update-readme/release` with CLI usage information. -->
 
 ```nohighlight
 $ nws --help
 
-SYNOPSIS
-  nws [-m mode] [text]
 
-DESCRIPTION
-  nws (*n*ormalize *w*hite*s*pace) performs whitespace normalization,
-  offering several modes.
-  
-  Input is provided via one or more operands or, in their absence, via stdin.
-  To disambiguate operands from options, precede operands with '--' as a
-  separate argument.
-  
-  Note that specifying a mode with -m applies only to *multi-line* input.
-  All modes behave identically with respect to normalizing a given single
-  line:
-    Any run of any mix of spaces and tabs is replaced with a single space
-    each, except leading and trailing runs, which are discarded.
+Normalizes whitespace in one of several modes.
 
-  -m mode
-    0 (default) ... runs of blank (all-whitespace or empty) lines are
-      replaced with 1 empty line each, resulting in paragraph-internal
-      newlines getting preserved, with blank lines at the beginning, between
-      paragraphs, and at the end getting normalized to a single empty line
-      each.
-    1 ... runs of blank (all-whitespace or empty) lines are discarded,
-      resulting in a single block of non-blank lines.
-    2 ... like mode 0, except that paragraph-internal newlines are replaced
-      with a single space each, resulting in each paragraph becoming a
-      single line, with 1 empty line between paragraphs.
-    3 ... normalization includes newlines too, so that any run of any mix of
-      spaces, tabs, and newlines is replaced with a single space each,
-      resulting in a single, long output line.
+    nws [-m <mode>] [<text>...]
 
-EXAMPLES
-  nws $'  one \t\t two  three   ' # -> 'one two three'
-  nws <<<$'\n\n  one\n two \n\n\n  three\n\n' # -> $'\none\ntwo\n\nthree\n'
-  nws -m 1 <<<$'\n\n  one\n two \n\n\n  three\n\n' # -> $'one\ntwo\nthree'
-  nws -m 2 <<<$'\n\n  one\n two \n\n\n  three\n\n' # -> $'\none two\nthree\n'
-  nws -m 3 <<<$'  one two\n  three ' # -> 'one two three'
+<mode> values (treatment of newlines in multi-line input):
+
+    mp   (default) multi-paragraph: fold multiple blank lines into one
+    fp   flattened multi-paragraph: normalize each paragraph to single line
+    sp   single-paragraph: remove all blank lines.
+    sl   single-line: normalize to single output line
+
+Alternatively, specify mode values directly as options; e.g., --sp in lieu  
+of -m sp
+
+Standard options: --help, --man, --version, --home
 ```
 
 <!-- DO NOT EDIT THE NEXT CHAPTER and RETAIN THIS COMMENT: The next chapter is updated by `make update-readme/release` with the contents of 'LICENSE.md'. ALSO, LEAVE AT LEAST 1 BLANK LINE AFTER THIS COMMENT. -->
@@ -184,6 +173,7 @@ This project gratefully depends on the following open-source components, accordi
 
 * [doctoc (D)](https://github.com/thlorenz/doctoc)
 * [json (D)](https://github.com/trentm/json)
+* [marked-man (D)](https://github.com/kapouer/marked-man#readme)
 * [replace (D)](https://github.com/harthur/replace)
 * [semver (D)](https://github.com/npm/node-semver#readme)
 * [tap (D)](https://github.com/isaacs/node-tap)
@@ -196,6 +186,16 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.2.0](https://github.com/mklement0/nws-cli/compare/v0.1.4...v0.2.0)** (2015-09-18):
+  * [usability improvement] New, mnemonic mode names supersede the old numeric 
+    normalization modes (option-arguments for `-m`); mode names come in both
+    short and long forms; similarly, `--mode` is now supported as a verbose
+    alternative to `-m`.
+  * [deprecation] The numeric modes (0..3) still work, but should no longer be
+    used and are no longer documented.
+  * [doc] `nws` now has a man page (if manually installed, use `nws --man`);
+    `nws -h` now just prints concise usage information.
 
 * **[v0.1.4](https://github.com/mklement0/nws-cli/compare/v0.1.3...v0.1.4)** (2015-09-15):
   * [dev] Makefile improvements; various other behind-the-scenes tweaks.
