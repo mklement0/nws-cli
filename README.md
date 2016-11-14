@@ -5,8 +5,10 @@
 
 **Contents**
 
-- [nws &mdash; introduction](#nws-&mdash-introduction)
+- [nws &mdash; whitespace normalization](#nws-&mdash-whitespace-normalization)
 - [Examples](#examples)
+  - [Transliteration Examples](#transliteration-examples)
+  - [Condensing Examples](#condensing-examples)
 - [Installation](#installation)
   - [Installation from the npm registry](#installation-from-the-npm-registry)
   - [Manual installation](#manual-installation)
@@ -18,15 +20,25 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# nws &mdash; introduction
+# nws &mdash; whitespace normalization
 
-`nws` is a Unix CLI that normalizes whitespace in text, offering several modes.
+`nws` is a Unix CLI that normalizes whitespace in text, offering several modes,
+grouped into two categories:
 
-Choosing a mode only applies to multi-line input;
-all modes behave identically with respect to normalizing a given _single_ line:  
-Any run of any mix of spaces and tabs is replaced with a single space each, except leading and trailing runs, which are discarded.
+* Whitespace _transliteration_ modes:
 
-Input can be provided either via arguments or via stdin.
+Line endings can be changed to be Windows- or Unix-specific, and select  
+Unicode whitespace and punctuation can be replaced with their closest ASCII  
+equivalents.
+
+* Whitespace _condensing_ modes:
+
+Trims leading and trailing runs of any mix of tabs and spaces and replaces  
+them with a single space each. The individual modes in this category differ 
+only with respect to how _multi-line_ input is treated. 
+
+Input can be provided either via filename arguments or via stdin.
+Option `-i` offers in-place updating.
 
 See the examples below, get concise [usage](#usage) information further below,
 or read the [manual](doc/nws.md).
@@ -35,12 +47,36 @@ or read the [manual](doc/nws.md).
 
 Note:
 
+## Transliteration Examples
+
+```shell
+# Converts a CRLF line-endings file (Windows) to a LF-only file (Unix).
+# No output is produced, because the file is updated in-place; a backup
+# of the original file is created with suffix '.bak'. 
+$ nws --mode lf --in-place=.bak from-windows.txt
+
+# Converts a LF-only file (Unix) to a CRLF line-endings file (Windows).
+# No output is produced, because the file is updated in-place; since no
+# backup suffix is specified, no backup file is created.
+$ nws --crlf -i from-unix.txt
+
+# Converts select Unicode whitespace and punctuation chars. to their 
+# closest ASCII equivalents and sends the output to a different file.
+# Note that any other non-ASCII characters are left untouched.
+# Helpful for converting code samples that were formatted display back to
+# valid sourc code. 
+$ nws --ascii unicode-punct.txt > ascii-punct.txt 
+
+```
+
+## Condensing Examples
+
  * Output from the example commands is piped to `cat -et` to better illustrate the output; `cat -et` shows line endings as `$` (and control chars. as `^M<char>`; e.g., a tab would show as `^I`).
 
 ```shell
 # -- Single-input-line normalization (mode option doesn't apply).
 
-> nws '    I   will   be normalized.   ' | cat -et 
+> nws <<<'    I   will   be normalized.   ' | cat -et 
 I will be normalized.$
   # Ditto, but with a mix of spaces and tabs.
 > nws "$(printf ' I \t\t will   be normalized.\t\t')" | cat -et 
@@ -67,7 +103,7 @@ EOF
   # `--mode multi-para`.
   # In addition to line-internal normalization, 
   # folds runs of blank/empty lines into 1 empty line each.
-> nws < /tmp/nws-demo | cat -et
+$ nws < /tmp/nws-demo | cat -et
 $
 one$
 two$
@@ -78,7 +114,7 @@ $
   # Single-paragraph mode: `--sp` or `-m sp` or `--mode single-para`
   # In addition to line-internal normalization, 
   # removes all blank/empty lines.
-> nws --sp < /tmp/nws-demo | cat -et
+$ nws --sp < /tmp/nws-demo | cat -et
 one$
 two$
 three$
@@ -86,7 +122,7 @@ three$
   # Flattened-multi-pargraph mode: `--fp` or `-m fp` or `--mode flat-para`
   # In addition to line-internal normalization, 
   # joins paragraph-internal lines with a space each.
-> nws --fp < /tmp/nws-demo | cat -et
+$ nws --fp < /tmp/nws-demo | cat -et
 $
 one two$
 $
@@ -97,7 +133,7 @@ $
   # In addition to line-internal normalization, 
   # joins all non-empty/non-blank lines with a space each
   # to form a single, long output line.
-> nws --sl < /tmp/nws-demo | cat -et
+$ nws --sl < /tmp/nws-demo | cat -et
 one two three$
 ```
 
@@ -140,14 +176,24 @@ $ nws --help
 
 Normalizes whitespace in one of several modes.
 
-    nws [-m <mode>] [<text>...]
+    nws [-m <mode>] [[-i[<ext>]] file...]
 
-<mode> values (treatment of newlines in multi-line input):
+    Condensing <mode>s:
 
-    mp   (default) multi-paragraph: fold multiple blank lines into one
-    fp   flattened multi-paragraph: normalize each paragraph to single line
-    sp   single-paragraph: remove all blank lines.
-    sl   single-line: normalize to single output line
+    All these modes normalize runs of tabs and spaces to a single space  
+    each and trim leading and trailing runs; they only differ with respect to
+    how multi-line input is processed.
+
+    mp   (default) multi-paragraph: folds multiple blank lines into one
+    fp   flattened multi-paragraph: normalizes each paragraph to single line
+    sp   single-paragraph: removes all blank lines.
+    sl   single-line: normalizes to single output line
+
+    Transliteration <mode>s:
+
+    lf     translates line endings to LF-only (\n)
+    crlf   translates line endings to CRLF (\r\n)
+    ascii  translates Unicode whitespace and punctuation to ASCII
 
 Alternatively, specify mode values directly as options; e.g., --sp in lieu  
 of -m sp
@@ -159,7 +205,7 @@ Standard options: --help, --man, --version, --home
 
 # License
 
-Copyright (c) 2015 Michael Klement <mklement0@gmail.com> (http://same2u.net), released under the [MIT license](https://spdx.org/licenses/MIT#licenseText).
+Copyright (c) 2015-2016 Michael Klement <mklement0@gmail.com> (http://same2u.net), released under the [MIT license](https://spdx.org/licenses/MIT#licenseText).
 
 ## Acknowledgements
 
@@ -176,7 +222,6 @@ This project gratefully depends on the following open-source components, accordi
 * [marked-man (D)](https://github.com/kapouer/marked-man#readme)
 * [replace (D)](https://github.com/harthur/replace)
 * [semver (D)](https://github.com/npm/node-semver#readme)
-* [tap (D)](https://github.com/isaacs/node-tap)
 * [urchin (D)](https://github.com/tlevine/urchin)
 
 <!-- DO NOT EDIT THE NEXT CHAPTER and RETAIN THIS COMMENT: The next chapter is updated by `make update-readme/release` with the contents of 'CHANGELOG.md'. ALSO, LEAVE AT LEAST 1 BLANK LINE AFTER THIS COMMENT. -->
@@ -186,6 +231,14 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.3.0](https://github.com/mklement0/nws-cli/compare/v0.2.0...v0.3.0)** (2016-11-13):
+  * [BREAKING CHANGE] `nws` is now file-based: operands are interpreted as 
+    filenames, and option `-i` allows in-place updating. Use stdin to provide
+    strings as input, such as via `echo ... | nws ...`.
+  * [enhancement] New transliteration modes added for changing line-ending
+    styles and for translating non-ASCII Unicode whitespace/punctuation to
+    their closest ASCII equivalents.
 
 * **[v0.2.0](https://github.com/mklement0/nws-cli/compare/v0.1.4...v0.2.0)** (2015-09-18):
   * [usability improvement] New, mnemonic mode names supersede the old numeric 

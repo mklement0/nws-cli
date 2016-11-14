@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# ---
+# IMPORTANT: Use the following statement at the TOP OF EVERY TEST SCRIPT
+#            to ensure that this package's 'bin/' subfolder is added to the path so that
+#            this package's CLIs can be invoked by their mere filename in the rest
+#            of the script.
+# ---
+PATH=${PWD%%/test*}/bin:$PATH
+
+# Helper function for error reporting.
+die() { (( $# > 0 )) && echo "$*" >&2; exit 1; }
+
+modes=( mp multi-para fp flat-para sp single-para sl single-line lf unix-newlines crlf windows-newlines ascii ascii-punctuation )
+
+for mode in "${modes[@]}"; do
+  nws -m "$mode" <<<'dummy input' >/dev/null || die "Invocation failed: -m $mode"
+  nws --mode "$mode" <<<'dummy input' >/dev/null || die "Invocation failed: --mode $mode"
+  nws "--$mode" <<<'dummy input' >/dev/null || die "Invocation failed: --$mode"
+done
+
+nws -m sp -m fp <<<'dummy input' && die "Shouldn't accept multiple mode aguments."
+
+exit 0

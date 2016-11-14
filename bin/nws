@@ -4,7 +4,7 @@
 
 kTHIS_NAME=${BASH_SOURCE##*/}
 kTHIS_HOMEPAGE='https://github.com/mklement0/nws-cli'
-kTHIS_VERSION='v0.2.0' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
+kTHIS_VERSION='v0.3.0' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
 
 unset CDPATH  # To prevent unexpected `cd` behavior.
 
@@ -12,6 +12,21 @@ unset CDPATH  # To prevent unexpected `cd` behavior.
 
 die() { echo "$kTHIS_NAME: ERROR: ${1:-"ABORTING due to unexpected error."}" 1>&2; exit ${2:-1}; }
 dieSyntax() { echo "$kTHIS_NAME: ARGUMENT ERROR: ${1:-"Invalid argument(s) specified."} Use -h for help." 1>&2; exit 2; }
+
+# Set up an EXIT handler that cleans up on success
+# or reports where a copy of the input file can be found on error, if in-place updating was attempted.
+tmpFile= file= inFile=
+trap '
+  if (( $? )); then # an error occurred
+    if (( inPlaceUpdating )); then
+      if [[ -e $inFile ]]; then
+        echo "Input file $file may have gotten corrupted. A copy of the input file can be found at: $inFile" >&2
+      fi
+    fi
+  else # success: remove any temp. file
+    [[ -e $tmpFile ]] && rm -- "$tmpFile"
+  fi
+' EXIT
 
 # SYNOPSIS
 #   openUrl <url>
@@ -135,18 +150,19 @@ dieSyntax() {
 #   normalizeWhiteSpace 2 <<<$'\n \n line\t1\n  line  2 \n\nline 3\n\n\n'  # -> $'\nline 1 line 2\n\nline 3'
 #   normalizeWhiteSpace 3 <<<$'\n \n line\t1\n  line  2 \n\nline 3\n\n\n'  # -> $'line 1 line 2 line 3'
 normalizeWhiteSpace() {
-  case $1 in
-    0|'') # default: line-interior normalization with leading and trailing runs discarded; runs of blank (all-whitespace or empty) lines replaced with 1 empty line each -> multiple paragraphs with 1 empty line in between
-      awk '{$1=$1; print}' | cat -s # rebuild the line with a space between fields (may result in empty lines), then replace each run of empty lines with a single empty line.
+  local mode=$1; shift
+  case $mode in
+    0) # default: line-interior normalization with leading and trailing runs discarded; runs of blank (all-whitespace or empty) lines replaced with 1 empty line each -> multiple paragraphs with 1 empty line in between
+      awk '{$1=$1; print}' "$@" | cat -s # rebuild the line with a space between fields (may result in empty lines), then replace each run of empty lines with a single empty line.
       ;;
     1) # line-interior normalization with leading and trailing runs discarded; runs of blank (all-whitespace or empty) lines discarded -> 1 block of non-empty lines
-      awk '{$1=$1} $1!=""' # rebuild the line with a space between fields; if there's at least 1 field, print the rebuilt line.
+      awk '{$1=$1} $1!=""' "$@" # rebuild the line with a space between fields; if there's at least 1 field, print the rebuilt line.
       ;;
     2) # paragraph-interior normalization (across non-empty lines), runs of blank (all-whitespace or empty) lines replaced with 1 empty line each -> each paragraph becomes 1 long line with 1 empty line in between
-      awk '{$1=$1; nonEmpty=($1!=""); printf ((nonEmpty && prevNonEmpty) ? " " : ((NR > 1) ? "\n" : "")); prevNonEmpty=nonEmpty; printf "%s", $0} END { printf "\n" }' | cat -s # rebuild the line with a space between fields (may result in empty lines), then replace each run of empty lines with a single empty line.
+      awk '{$1=$1; nonEmpty=($1!=""); printf ((nonEmpty && prevNonEmpty) ? " " : ((NR > 1) ? "\n" : "")); prevNonEmpty=nonEmpty; printf "%s", $0} END { printf "\n" }' "$@" | cat -s # rebuild the line with a space between fields (may result in empty lines), then replace each run of empty lines with a single empty line.
       ;;
     3) # normalization across *all* types of whitespace, including newlines -> 1 long line
-      awk 'r!="" { printf "%s%s", sep, r; r=""; sep=" " } { $1=$1; if ($1!="") r=$0 } END { if (r!="") printf "%s%s", sep, r }' 
+      awk 'r!="" { printf "%s%s", sep, r; r=""; sep=" " } { $1=$1; if ($1!="") r=$0 } END { if (r!="") printf "%s%s", sep, r }' "$@"
       printf '\n'
       ;;
     *)
@@ -155,9 +171,187 @@ normalizeWhiteSpace() {
   esac
 }
 
+# Replaces select non-ASCII Unicode whitespace and punctuation characters
+# with their closest ASCII equivalents (while leaving other non-ASCII
+# characters untouched).
+toAsciiWhitespaceAndPunctuation() {
+
+  # Specify the Unicode chars. as hex. byte escape sequences representing the
+  # bytes in UTF-8 encoding,  
+  # and then use `printf %b` to convert them into actual characters.
+
+  # The characters are a *selection* from the following Unicode categories:
+  #   * U+80   Latin-1 Supplement (double-angle quotation marks as used in Spanish, for instance)
+  #   * U+2000 General Punctuation
+  #   * U+2E00 Supplemental Punctuation
+  #   * [OMITTED FOR NOW: U+2700 Dingbats (for ornamental quotes)]
+
+  local sedCmds=''
+
+  # Chars. to map to a space
+  local chars=(
+    '\xc2\xa0'     # no-break space 
+    '\xe2\x80\x80' # en quad
+    '\xe2\x80\x81' # em quad
+    '\xe2\x80\x82' # en space
+    '\xe2\x80\x83' # em space
+    '\xe2\x80\x84' # three-per-em space
+    '\xe2\x80\x85' # four-per-em space
+    '\xe2\x80\x86' # six-per-em space
+    '\xe2\x80\x87' # figure space
+    '\xe2\x80\x88' # punctuation space
+    '\xe2\x80\x89' # thin space
+    '\xe2\x80\x8a' # hair space
+    '\xe2\x80\xaf' # narrow no-break space
+    '\xe2\x81\x9f' # medium mathematical space
+  )
+  sedCmds+=$(printf 's/[%b]/ /g;' "${chars[@]}")
+  
+  # Chars. to map to a LF (\n)
+  local chars=(
+    '\xc2\x85'     # next line
+    '\xe2\x80\xa8' # line separator
+  )
+  sedCmds+=$(printf 's/[%b]/\\\n/g;' "${chars[@]}")
+
+  # Chars. to map to 2 LFs (\n\n)
+  local chars=(
+    '\xe2\x80\xa9' # paragraph separator
+  )
+  sedCmds+=$(printf 's/[%b]/\\\n\\\n/g;' "${chars[@]}")
+  
+  # Chars. to map to nothing (empty string).
+  local chars=(
+    '\xe2\x80\x8b' # zero-width space
+    '\xe2\x80\x8c' # zero width non-joiner
+    '\xe2\x81\xa0' # word joiner
+    '\xe2\x80\xa7' # hyphenation point
+  )
+  sedCmds+=$(printf 's/[%b]//g;' "${chars[@]}")
+
+  # Chars. to map to ' (single quote)
+  local chars=(
+    '\xe2\x80\x98' # left single quotation mark
+    '\xe2\x80\x99' # right single quotation mark
+    '\xe2\x80\x9a' # single low-9 quotation mark
+    '\xe2\x80\x9b' # single high-reversed-9 quotation mark
+    '\xe2\x80\xb3' # prime
+    '\xe2\x80\xb6' # reversed prime
+    '\xe2\x80\xb9' # single left-pointing angle quotation mark
+    '\xe2\x80\xba' # single right-pointing angle quotation mark
+    # '\xe2\x9d\xae' # heavy left-pointing angle quotation mark ornament
+    # '\xe2\x9d\xaf' # heavy right-pointing angle quotation mark ornament
+    # '\xe2\x9d\x9b' # heavy single turned comma quotation mark ornament
+    # '\xe2\x9d\x9c' # heavy single comma quotation mark ornament
+    # '\xe2\x9d\x9f' # heavy low single comma quotation mark ornament
+  )
+  sedCmds+=$(printf "s/[%b]/'/g;" "${chars[@]}")
+  
+  # Chars. to map to ''' (3 single quotes)
+  local chars=(
+    '\xe2\x80\xb4' # triple prime
+    '\xe2\x80\xb7' # reversed triple prime
+  )
+  sedCmds+=$(printf "s/[%b]/'''/g;" "${chars[@]}")
+
+  # Chars. to map to '''' (4 single quotes)
+  local chars=(
+    '\xe2\x81\x97' # quadruple prime
+  )
+  sedCmds+=$(printf "s/[%b]/''''/g;" "${chars[@]}")
+
+  # Chars. to map to " (double quote)
+  local chars=(
+    '\xe2\x80\x9c' # left double quotation mark
+    '\xe2\x80\x9d' # right double quotation mark
+    '\xe2\x80\x9e' # double low-9 quotation mark
+    '\xe2\x80\x9f' # double high-reversed-9 quotation mark
+    '\xe2\x80\xb2' # double prime
+    '\xe2\x80\xb5' # double reversed prime
+    '\xc2\xab'     # left-pointing double angle quotation mark
+    '\xc2\xbb'     # right-pointing double angle quotation mark
+    '\xe3\x80\x9d' # reversed double prime quotation mark
+    '\xe3\x80\x9f' # low double prime quotation mark
+    '\xe3\x80\x9e' # double prime quotation mark
+    '\xef\xbc\x82' # fullwidth quotation mark
+    '\xf3\xa0\x80\xa2' # tag quotation mark
+    # '\xe2\x9d\x9d' # heavy double turned comma quotation mark ornament
+    # '\xe2\x9d\x9e' # heavy double comma quotation mark ornament
+    # '\xe2\x9d\xa0' # heavy low double comma quotation mark ornament
+    # '\xe2\xb9\x82' # double low-reversed-9 quotation mark
+    # '\xf0\x9f\x99\xb8' # sans-serif heavy low double comma quotation mark ornament
+    # '\xf0\x9f\x99\xb6' # sans-serif heavy double turned comma quotation mark ornament
+    # '\xf0\x9f\x99\xb7' # sans-serif heavy double comma quotation mark ornament
+  )
+  sedCmds+=$(printf 's/[%b]/"/g;' "${chars[@]}")
+
+  # Chars. to map to - (hyphen-minus)
+  local chars=(
+    '\xe2\x80\x90' # hyphen
+    '\xe2\x80\x91' # non-breaking hyphen
+    '\xe2\x80\x92' # figure dash
+    '\xe2\x80\x93' # en dash
+    '\xe2\x81\x83' # hyphen bullet
+  )
+  sedCmds+=$(printf 's/[%b]/-/g;' "${chars[@]}")
+
+  # Chars. to map to -- (2 hyphen-minus)
+  local chars=(
+    '\xe2\x80\x94' # em dash
+    '\xe2\x80\x95' # horizontal bar
+    '\xe2\xb9\x80' # double hyphen
+    '\xe2\xb8\xba' # two-em dash
+    '\xe2\xb8\xbb' # three-em dash
+  )
+  sedCmds+=$(printf 's/[%b]/--/g;' "${chars[@]}")
+
+  # Chars. to map to . (period)
+  local chars=(
+    '\xe2\x80\xa4' # one dot leader
+    '\xe2\xb8\xbc' # stenographic full stop
+  )
+  sedCmds+=$(printf 's/[%b]/./g;' "${chars[@]}")
+
+  # Chars. to map to .. (2 periods)
+  local chars=(
+    '\xe2\x80\xa5' # two dot leader
+  )
+  sedCmds+=$(printf 's/[%b]/.,/g;' "${chars[@]}")
+
+  # Chars. to map to ... (3 periods)
+  local chars=(
+    '\xe2\x80\xa6' # horizontal ellipsis
+  )
+  sedCmds+=$(printf 's/[%b]/.../g;' "${chars[@]}")
+
+  # Chars. to map to || (2 pipe symbols)
+  local chars=(
+    '\xe2\x80\xa6' # double vertical line
+  )
+  sedCmds+=$(printf 's/[%b]/||/g;' "${chars[@]}")
+
+  # Misc. other substitutions
+  # !! These are true non-ASCII Unicode chars. in the first operands to the 
+  # !! s function calls, so this file must not ever be saved in an encoding 
+  # !! other than UTF-8.
+  sedCmds+='s/‼/!!/g; s/‽/?!/g; s/[‽⁈]/?!/g; s/⁇/??/g; s/⁉/!?/g;'
+
+  # Misc. other one-to-one character substitutions
+  # !! These are true non-ASCII Unicode chars. in the first operand to the 
+  # !! y function call, so this file must not ever be saved in an encoding
+  # !! other than UTF-8.
+  sedCmds+='y#‸⁁‹›⁄⁓⁎⁕⁏⁚#^^<>/~**;:#;'
+
+  # Invoke sed with the list of commands, with stdin input.
+  sed "$sedCmds" "$@"
+  
+}
+
 # --- END: functions
 
 # --- MAIN BODY
+
+nwsMode= handled=0 inPlaceUpdating=0 backupExt=
 
 # ----- BEGIN: OPTIONS PARSING: This is MOSTLY generic code, but:
 #  - SET allowOptsAfterOperands AFTER THIS COMMENT TO 1 to ALLOW OPTIONS TO BE MIXED WITH OPERANDS rather than requiring all options to come before the 1st operand, as POSIX mandates.
@@ -179,19 +373,29 @@ while (( $# )); do
         (( haveOptArgAttached )) && optArgOpt=$optArgAttached optArgReq=$optArgAttached || { (( $# > 1 )) && { optArgReq=$2; haveOptArgAsNextArg=1; }; }
         optsSpecified=1
         # ---- BEGIN: CUSTOMIZE HERE
-        nwsMode= handled=0
+        handled=0
+        errMsgSingleModeOnly="Only one mode may be specified."
         case $optName in
           m|mode)
+            [[ -z $nwsMode ]] || dieSyntax "$errMsgSingleModeOnly"
             needOptArg=1
             nwsMode=$optArgReq
             ;;
+          i|in-place)  # Note: similar to GNU sed, the only way to specify the optional option-argument is to directly attach it to the option.            
+            acceptOptArg=1 handled=1
+            inPlaceUpdating=1
+            backupExt=$optArgAttached
+            handled=1
+            ;; 
           *)  # We also accept the mode as direct options, so that --mode fp is identical to --fp
+            [[ -z $nwsMode ]] || dieSyntax "$errMsgSingleModeOnly"
             nwsMode=$optName
             ;;
         esac
-        if [[ -n $nwsMode ]]; then
+        if [[ $handled -eq 0 && -n $nwsMode ]]; then
           handled=1
           case $nwsMode in
+            # whitespace condensing modes
             0|1|2|3) # !! We still accept the numerical modes, but they're deprecated and no longer documented.
               :
               ;;
@@ -206,6 +410,16 @@ while (( $# )); do
               ;;
             sl|single-line)
               nwsMode=3
+              ;;              
+            # whitespace transliteration modes
+            crlf|windows-newlines) # convert CRLF line endings
+              nwsMode=4
+              ;;              
+            lf|unix-newlines) # convert to LF-only line endings
+              nwsMode=5
+              ;;              
+            ascii|ascii-punctuation) # convert non-ASCII Unicode whitespace and punctuation to closest ASCII equivalents
+              nwsMode=6
               ;;              
             *)
               (( needOptArg )) && dieSyntax "Unknown mode specified: '$nwsMode'."
@@ -239,17 +453,100 @@ done
 (( "${#operands[@]}" > 0 )) && set -- "${operands[@]}"; unset allowOptsAfterOperands operands i optName isLong prefix optArgAttached haveOptArgAttached haveOptArgAsNextArg acceptOptArg needOptArg
 # ----- END: OPTIONS PARSING: "$@" now contains all operands (non-option arguments).
 
-# Gather the input: remaining operand(s) OR stdin:
-if (( $# )); then
-  txt=$*
-else # read from stdin    
-  IFS= read -rd $'\x04' txt # !! The $'\x04' is required to support ^D to terminate *interactive* input.
+# Set default mode
+[[ -n $nwsMode ]] || nwsMode=0
+
+if (( $# )); then # filename operands given
+
+  # Make sure all files exists and are both readable and writable.
+  errMsgSuffix=
+  (( inPlaceUpdating )) && errMsgSuffix=$'\nNo files were modified.'
+  for f; do
+    [[ -L $f && ! -e $f ]] && die "File is a broken symlink: $f""$errMsgSuffix"
+    [[ ! -e $f ]] && die "No such file: $f""$errMsgSuffix"
+    [[ ! -f $f ]] && die "Not a file (wrong type of filesystem object): $f""$errMsgSuffix"
+    [[ ! -r $f ]] && die "File is not readable (permissions problem?): $f""$errMsgSuffix"
+    [[ ! -w $f ]] && die "File is not writable (permissions problem?): $f""$errMsgSuffix"
+  done
+
+  # Create a temporary file, if in-place updating without a backup was requested.
+  if [[ $inPlaceUpdating -eq 1 && -z $backupExt ]]; then
+    tmpFile=$(mktemp -t 'XXXX') # Works on both OSX and Linux; note: file will have random extension on OSX (e.g., '.../XXXX.bJViLcM3') and none on Linux (e.g., '.../vXDA')
+    # Note: The trap '...' EXIT handler set up above takes care of removing the temp. file.
+  fi
+
+else # no operands -> use stdin input
+
+  # Abort if no filename operands were given, yet in-place updating was requested.
+  (( inPlaceUpdating )) && dieSyntax "Please specfiy at least one file to update in place."
+
 fi
 
-# Do nothing, if the input is empty.
-(( ${#txt} > 0 )) || exit 0
+# Determine how many iterations we need.
+# We only need multiple ones, if more than 1 filename operand was passed and
+# in-place updating was requested, because we then need to process files
+# individually.
+if (( inPlaceUpdating )); then
+  numIterations=$#
+  files=( "$@" )
+else # stdin input or filename operands without in-place updating that can be passed at once 
+  numIterations=1
+fi
 
-normalizeWhiteSpace $nwsMode < <(printf %s "$txt") || die
+# Processing loop
+for (( i = 0; i < numIterations; ++i )); do
+
+  # Create the backup file / temp. copy for in-place updating.
+  # Note: With in-place updating, we need a temporary *copy* of the input file
+  #       so we can write back to the *original* file using output direction
+  #       which ensures that the original inode with all its attributes is
+  #       preserved.
+  if (( inPlaceUpdating )); then
+
+    # Determine the next input file.
+    # Note: Variables $file, $inFile, and $tmpFile are used in the
+    #       trap '...' EXIT handler defined at the top.
+    file=${files[i]}
+
+    # Create the temp. copy of the input file:
+    # Determine the file path...
+    if [[ -n $backupExt ]]; then # create backup copy
+      # We create the requested backup copy of the input file, which also 
+      # serves as our input source.
+      inFile="$file$backupExt"
+    else # no backup - use the temp. file created (empty) above.
+      inFile=$tmpFile      
+    fi
+    # ... and create the copy.
+    cp -p -- "$file" "$inFile" || die "Failed to create temp. copy of input file: $file" 
+
+    # Now, set $@ to the input file at hand, and 
+    # redirect stdout to the original input file.
+    set -- "$inFile"
+    exec > "$file"
+
+  fi
+
+  case $nwsMode in
+    # whitespace compression/unification modes
+    0|1|2|3)
+      normalizeWhiteSpace "$nwsMode" "$@" || die
+      ;;
+    # whitespace transliteration modes
+    4) # to CRLF line endings
+      awk -v ORS='\r\n' 1 "$@" || die
+      ;;
+    5) # to LF-only line endings
+      awk '{ sub("\r$", ""); print }' "$@" || die
+      ;;
+    6) # Unicode whitespace+punctuation to ASCII equivalents
+      toAsciiWhitespaceAndPunctuation "$@" || die
+      ;;
+    *)
+      die "DESIGN ERROR: Unanticipated mode ID: $nwsMode"
+  esac
+
+done
 
 ####
 # MAN PAGE MARKDOWN SOURCE
@@ -300,14 +597,24 @@ normalizeWhiteSpace $nwsMode < <(printf %s "$txt") || die
 
 Normalizes whitespace in one of several modes.
 
-    nws [-m <mode>] [<text>...]
+    nws [-m <mode>] [[-i[<ext>]] file...]
 
-`<mode>` values (treatment of newlines in multi-line input):
+    Condensing <mode>s:
 
-    mp   (default) multi-paragraph: fold multiple blank lines into one
-    fp   flattened multi-paragraph: normalize each paragraph to single line
-    sp   single-paragraph: remove all blank lines.
-    sl   single-line: normalize to single output line
+    All these modes normalize runs of tabs and spaces to a single space  
+    each and trim leading and trailing runs; they only differ with respect to
+    how multi-line input is processed.
+
+    mp   (default) multi-paragraph: folds multiple blank lines into one
+    fp   flattened multi-paragraph: normalizes each paragraph to single line
+    sp   single-paragraph: removes all blank lines.
+    sl   single-line: normalizes to single output line
+
+    Transliteration <mode>s:
+
+    lf     translates line endings to LF-only (\n)
+    crlf   translates line endings to CRLF (\r\n)
+    ascii  translates Unicode whitespace and punctuation to ASCII
 
 Alternatively, specify mode values directly as options; e.g., `--sp` in lieu  
 of `-m sp`
@@ -317,21 +624,26 @@ Standard options: `--help`, `--man`, `--version`, `--home`
 ## DESCRIPTION
 
 `nws` (*n*ormalize *w*hite*s*pace) performs whitespace normalization,  
-offering several modes.
+offering several modes in two categories:
 
-Input is provided via one or more operands or, in their absence, via stdin.  
-To disambiguate operands from options, precede operands with `--` as a  
-separate argument.
+* whitespace-condensing modes:  
+Trims leading and trailing runs of any mix of tabs and spaces and replaces  
+them with a single space each. The individual modes differ only with respect to  
+how multi-line input is treated. 
 
-Specifying a mode with option `-m` applies only to *multi-line* input;  
-all modes behave identically with respect to normalizing a given single  
-line, namely:  
-Any run of any mix of spaces and tabs is replaced with a single space  
-each, except leading and trailing runs, which are discarded.
+* whitespace-transliteration modes:  
+Line endings can be changed to be Windows- or Unix-specific, and select  
+Unicode whitespace and punctuation can be replaced with their closest ASCII  
+equivalents.
+
+Input is provided either from the specified files or via stdin.  
+Output is sent to stdout by default.  
+To update files in-place, use the `-i` option (in which case there will be no  
+stdout output). 
 
 ## OPTIONS
 
-  * `-m <mode>` or `--mode <mode>`  
+  * CONDENSING modes: `-m <mode>` or `--mode <mode>` or `--<mode>`  
     where `<mode>` is one of:
 
     * `mp`, `multi-para` (default)  
@@ -354,8 +666,30 @@ each, except leading and trailing runs, which are discarded.
       spaces, tabs, and newlines is replaced with a single space each,  
       resulting in a single, long output line.
 
-You may specify mode values as options directly; e.g., `--fp` or `--flat-para`  
-in lieu of  `-m fp` or `--mode fp` or `--mode flat-para`.
+  * TRANSLITERATION modes: `-m <mode>` or `--mode <mode>`or `--<mode>`  
+    where `<mode>` is one of:
+
+    * `lf`  
+    Translates Windows-style CRLF (\r\n) line endings to Unix-style LF (\n)  
+    line endings.
+
+    * `crlf`  
+    Translates Unix-style LF (\n) line endings to Windows-style CRLF (\r\n)  
+    line endings.
+
+    * `ascii`, `ascii-punctuation`  
+    Translates non-ASCII Unicode whitespace and punctuation to the closest  
+    ASCII equivalents, while leaving other non-ASCII characters untouched.  
+    This is helpful for soure-code samples that have been formatted for display  
+    with typographic quotes, em dashes, and the like, which usually makes the  
+    code indigestible to compilers/interpreters.
+
+  * `-i[<backup-suffix>]`, `--in-place[=<backup-suffix>]`  
+  Updates the specified files *in place*; that is, the results of the  
+  normalization are written back to the input file, and no stdout output is  
+  produced. 
+  If `<backup-suffix>` is specified (recommended), a backup copy of each  
+  input file is made first, simply by appending the suffix to the filename.  
 
 ## STANDARD OPTIONS
 
@@ -385,8 +719,10 @@ The examples use ANSI C-quoted input strings (`$'...'`) for brevity, which
 are supported in Bash, Ksh, and Zsh.  
 Empty output lines are represented by `~`.
 
+    ## CONDENSING EXAMPLES:
+
     # Single-line input - no mode needed.
-    $ nws $'  one \t\t two  three   '
+    $ nws <<< $'  one \t\t two  three   '
     one two three
 
     # Default: multi-paragraph mode (`-m mp` or `--mode multi-para`)
@@ -416,5 +752,22 @@ Empty output lines are represented by `~`.
     # Single-line mode
     $ nws --sl <<<$'  one two\n  three '
     one two three
+
+    ## TRANSLITERATION EXAMPLES:
+
+    # Converts a CRLF line-endings file (Windows) to a LF-only file (Unix).
+    # No output is produced, because the file is updated in-place; a backup
+    # of the original file is created with suffix '.bak'. 
+    $ nws --mode lf --in-place=.bak from-windows.txt
+
+    # Converts a LF-only file (Unix) to a CRLF line-endings file (Windows).
+    # No output is produced, because the file is updated in-place; since no
+    # backup suffix is specified, no backup file is created.
+    $ nws --crlf -i from-unix.txt
+
+    # Converts select Unicode whitespace and punctuation chars. to their 
+    # closest ASCII equivalents and sends the output to a different file. 
+    $ nws --ascii unicode-punct.txt > ascii-punct.txt
+
 
 EOF_MAN_PAGE

@@ -6,14 +6,24 @@
 
 Normalizes whitespace in one of several modes.
 
-    nws [-m <mode>] [<text>...]
+    nws [-m <mode>] [[-i[<ext>]] file...]
 
-`<mode>` values (treatment of newlines in multi-line input):
+    Condensing <mode>s:
 
-    mp   (default) multi-paragraph: fold multiple blank lines into one
-    fp   flattened multi-paragraph: normalize each paragraph to single line
-    sp   single-paragraph: remove all blank lines.
-    sl   single-line: normalize to single output line
+    All these modes normalize runs of tabs and spaces to a single space  
+    each and trim leading and trailing runs; they only differ with respect to
+    how multi-line input is processed.
+
+    mp   (default) multi-paragraph: folds multiple blank lines into one
+    fp   flattened multi-paragraph: normalizes each paragraph to single line
+    sp   single-paragraph: removes all blank lines.
+    sl   single-line: normalizes to single output line
+
+    Transliteration <mode>s:
+
+    lf     translates line endings to LF-only (\n)
+    crlf   translates line endings to CRLF (\r\n)
+    ascii  translates Unicode whitespace and punctuation to ASCII
 
 Alternatively, specify mode values directly as options; e.g., `--sp` in lieu  
 of `-m sp`
@@ -23,21 +33,26 @@ Standard options: `--help`, `--man`, `--version`, `--home`
 ## DESCRIPTION
 
 `nws` (*n*ormalize *w*hite*s*pace) performs whitespace normalization,  
-offering several modes.
+offering several modes in two categories:
 
-Input is provided via one or more operands or, in their absence, via stdin.  
-To disambiguate operands from options, precede operands with `--` as a  
-separate argument.
+* whitespace-condensing modes:  
+Trims leading and trailing runs of any mix of tabs and spaces and replaces  
+them with a single space each. The individual modes differ only with respect to  
+how multi-line input is treated. 
 
-Specifying a mode with option `-m` applies only to *multi-line* input;  
-all modes behave identically with respect to normalizing a given single  
-line, namely:  
-Any run of any mix of spaces and tabs is replaced with a single space  
-each, except leading and trailing runs, which are discarded.
+* whitespace-transliteration modes:  
+Line endings can be changed to be Windows- or Unix-specific, and select  
+Unicode whitespace and punctuation can be replaced with their closest ASCII  
+equivalents.
+
+Input is provided either from the specified files or via stdin.  
+Output is sent to stdout by default.  
+To update files in-place, use the `-i` option (in which case there will be no  
+stdout output). 
 
 ## OPTIONS
 
-  * `-m <mode>` or `--mode <mode>`  
+  * CONDENSING modes: `-m <mode>` or `--mode <mode>` or `--<mode>`  
     where `<mode>` is one of:
 
     * `mp`, `multi-para` (default)  
@@ -60,8 +75,30 @@ each, except leading and trailing runs, which are discarded.
       spaces, tabs, and newlines is replaced with a single space each,  
       resulting in a single, long output line.
 
-You may specify mode values as options directly; e.g., `--fp` or `--flat-para`  
-in lieu of  `-m fp` or `--mode fp` or `--mode flat-para`.
+  * TRANSLITERATION modes: `-m <mode>` or `--mode <mode>`or `--<mode>`  
+    where `<mode>` is one of:
+
+    * `lf`  
+    Translates Windows-style CRLF (\r\n) line endings to Unix-style LF (\n)  
+    line endings.
+
+    * `crlf`  
+    Translates Unix-style LF (\n) line endings to Windows-style CRLF (\r\n)  
+    line endings.
+
+    * `ascii`, `ascii-punctuation`  
+    Translates non-ASCII Unicode whitespace and punctuation to the closest  
+    ASCII equivalents, while leaving other non-ASCII characters untouched.  
+    This is helpful for soure-code samples that have been formatted for display  
+    with typographic quotes, em dashes, and the like, which usually makes the  
+    code indigestible to compilers/interpreters.
+
+  * `-i[<backup-suffix>]`, `--in-place[=<backup-suffix>]`  
+  Updates the specified files *in place*; that is, the results of the  
+  normalization are written back to the input file, and no stdout output is  
+  produced. 
+  If `<backup-suffix>` is specified (recommended), a backup copy of each  
+  input file is made first, simply by appending the suffix to the filename.  
 
 ## STANDARD OPTIONS
 
@@ -91,8 +128,10 @@ The examples use ANSI C-quoted input strings (`$'...'`) for brevity, which
 are supported in Bash, Ksh, and Zsh.  
 Empty output lines are represented by `~`.
 
+    ## CONDENSING EXAMPLES:
+
     # Single-line input - no mode needed.
-    $ nws $'  one \t\t two  three   '
+    $ nws <<< $'  one \t\t two  three   '
     one two three
 
     # Default: multi-paragraph mode (`-m mp` or `--mode multi-para`)
@@ -122,4 +161,21 @@ Empty output lines are represented by `~`.
     # Single-line mode
     $ nws --sl <<<$'  one two\n  three '
     one two three
+
+    ## TRANSLITERATION EXAMPLES:
+
+    # Converts a CRLF line-endings file (Windows) to a LF-only file (Unix).
+    # No output is produced, because the file is updated in-place; a backup
+    # of the original file is created with suffix '.bak'. 
+    $ nws --mode lf --in-place=.bak from-windows.txt
+
+    # Converts a LF-only file (Unix) to a CRLF line-endings file (Windows).
+    # No output is produced, because the file is updated in-place; since no
+    # backup suffix is specified, no backup file is created.
+    $ nws --crlf -i from-unix.txt
+
+    # Converts select Unicode whitespace and punctuation chars. to their 
+    # closest ASCII equivalents and sends the output to a different file. 
+    $ nws --ascii unicode-punct.txt > ascii-punct.txt
+
 

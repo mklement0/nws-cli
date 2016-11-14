@@ -16,12 +16,16 @@ die() { (( $# > 0 )) && echo "$*" >&2; exit 1; }
 # and causes this test to fail.
 # See https://github.com/tlevine/urchin.
 
-# Missing option-argument.
-echo ' hi ' | nws -m && die
+# Missing option-argument for -m
+nws -m && die
+
+# Missing option-argument for -i
+nws -i && die
 
 # Invalid option-argument.
 for invalidMode in '-1', '4', 'x'; do
-  echo ' hi ' | nws -m "$invalidMode" && die
+  nws -m "$invalidMode" <<<'dummy input' && die
 done
+
 
 exit 0

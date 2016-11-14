@@ -4,6 +4,14 @@ Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
 
+* **[v0.3.0](https://github.com/mklement0/nws-cli/compare/v0.2.0...v0.3.0)** (2016-11-13):
+  * [BREAKING CHANGE] `nws` is now file-based: operands are interpreted as 
+    filenames, and option `-i` allows in-place updating. Use stdin to provide
+    strings as input, such as via `echo ... | nws ...`.
+  * [enhancement] New transliteration modes added for changing line-ending
+    styles and for translating non-ASCII Unicode whitespace/punctuation to
+    their closest ASCII equivalents.
+
 * **[v0.2.0](https://github.com/mklement0/nws-cli/compare/v0.1.4...v0.2.0)** (2015-09-18):
   * [usability improvement] New, mnemonic mode names supersede the old numeric 
     normalization modes (option-arguments for `-m`); mode names come in both

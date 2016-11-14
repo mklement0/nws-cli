@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# ---
+# IMPORTANT: Use the following statement at the TOP OF EVERY TEST SCRIPT
+#            to ensure that this package's 'bin/' subfolder is added to the path so that
+#            this package's CLIs can be invoked by their mere filename in the rest
+#            of the script.
+# ---
+PATH=${PWD%%/test*}/bin:$PATH
+
+trap 'rm /tmp/nws-test?-$$*' EXIT
+
+# Helper function for error reporting.
+die() { (( $# > 0 )) && echo "$*" >&2; exit 1; }
+
+tmpFile1="/tmp/nws-test1-$$"
+tmpFile2="/tmp/nws-test2-$$"
+ext='.bak'
+tmpFile1_bak="$tmpFile1$ext"
+tmpFile2_bak="$tmpFile2$ext"
+
+in1='     foo        bar      1    '
+in2='     foo        bar      2   '
+normalized1='foo bar 1'
+normalized2='foo bar 2'
+
+echo "$in1" > "$tmpFile1"
+nws -i "$tmpFile1" || die
+[[ $(< "$tmpFile1") == "$normalized1" ]] || die "Updating single file in place failed."
+
+echo "$in1" > "$tmpFile1"
+echo "$in2" > "$tmpFile2"
+nws -i.bak "$tmpFile1" "$tmpFile2" || die "Updating 2 files in place failed."
+[[ $(< "$tmpFile1") == "$normalized1" ]] || die "1st updated file doesn't have expected content."
+[[ $(< "$tmpFile2") == "$normalized2" ]] || die "2nd updated file doesn't have expected content."
+[[ $(< "$tmpFile1_bak") == "$in1" ]] || die "Backup of 1st file file doesn't contain original content."
+[[ $(< "$tmpFile2_bak") == "$in2" ]] || die "Backup of 2nd file file doesn't contain original content."
+
+exit 0

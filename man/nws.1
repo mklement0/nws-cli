@@ -1,4 +1,4 @@
-.TH "NWS" "1" "September 2015" "v0.2.0" ""
+.TH "NWS" "1" "November 2016" "v0.3.0" ""
 .SH "NAME"
 \fBnws\fR \- normalize whitespace
 .SH SYNOPSIS
@@ -7,18 +7,24 @@ Normalizes whitespace in one of several modes\.
 .P
 .RS 2
 .nf
-nws [\-m <mode>] [<text>\.\.\.]
-.fi
-.RE
-.P
-\fB<mode>\fP values (treatment of newlines in multi\-line input):
-.P
-.RS 2
-.nf
-mp   (default) multi\-paragraph: fold multiple blank lines into one
-fp   flattened multi\-paragraph: normalize each paragraph to single line
-sp   single\-paragraph: remove all blank lines\.
-sl   single\-line: normalize to single output line
+nws [\-m <mode>] [[\-i[<ext>]] file\.\.\.]
+
+Condensing <mode>s:
+
+All these modes normalize runs of tabs and spaces to a single space  
+each and trim leading and trailing runs; they only differ with respect to
+how multi\-line input is processed\.
+
+mp   (default) multi\-paragraph: folds multiple blank lines into one
+fp   flattened multi\-paragraph: normalizes each paragraph to single line
+sp   single\-paragraph: removes all blank lines\.
+sl   single\-line: normalizes to single output line
+
+Transliteration <mode>s:
+
+lf     translates line endings to LF\-only (\\n)
+crlf   translates line endings to CRLF (\\r\\n)
+ascii  translates Unicode whitespace and punctuation to ASCII
 .fi
 .RE
 .P
@@ -31,27 +37,38 @@ Standard options: \fB\-\-help\fP, \fB\-\-man\fP, \fB\-\-version\fP, \fB\-\-home\
 .P
 \fBnws\fP (\fIn\fRormalize \fIw\fRhite\fIs\fRpace) performs whitespace normalization,
 .br
-offering several modes\.
+offering several modes in two categories:
+.RS 0
+.IP \(bu 2
+whitespace\-condensing modes:
+.br
+Trims leading and trailing runs of any mix of tabs and spaces and replaces
+.br
+them with a single space each\. The individual modes differ only with respect to
+.br
+how multi\-line input is treated\. 
+.IP \(bu 2
+whitespace\-transliteration modes:
+.br
+Line endings can be changed to be Windows\- or Unix\-specific, and select
+.br
+Unicode whitespace and punctuation can be replaced with their closest ASCII
+.br
+equivalents\.
+
+.RE
 .P
-Input is provided via one or more operands or, in their absence, via stdin\.
+Input is provided either from the specified files or via stdin\.
 .br
-To disambiguate operands from options, precede operands with \fB\-\-\fP as a
+Output is sent to stdout by default\.
 .br
-separate argument\.
-.P
-Specifying a mode with option \fB\-m\fP applies only to \fImulti\-line\fR input;
+To update files in\-place, use the \fB\-i\fP option (in which case there will be no
 .br
-all modes behave identically with respect to normalizing a given single
-.br
-line, namely:
-.br
-Any run of any mix of spaces and tabs is replaced with a single space
-.br
-each, except leading and trailing runs, which are discarded\.
+stdout output)\. 
 .SH OPTIONS
 .RS 0
 .IP \(bu 2
-\fB\-m <mode>\fP or \fB\-\-mode <mode>\fP
+CONDENSING modes: \fB\-m <mode>\fP or \fB\-\-mode <mode>\fP or \fB\-\-<mode>\fP
 .br
 where \fB<mode>\fP is one of:
 .RS 0
@@ -89,12 +106,50 @@ spaces, tabs, and newlines is replaced with a single space each,
 resulting in a single, long output line\.
 
 .RE
+.IP \(bu 2
+TRANSLITERATION modes: \fB\-m <mode>\fP or \fB\-\-mode <mode>\fPor \fB\-\-<mode>\fP
+.br
+where \fB<mode>\fP is one of:
+.RS 0
+.IP \(bu 2
+\fBlf\fP
+.br
+Translates Windows\-style CRLF (\\r\\n) line endings to Unix\-style LF (\\n)
+.br
+line endings\.
+.IP \(bu 2
+\fBcrlf\fP
+.br
+Translates Unix\-style LF (\\n) line endings to Windows\-style CRLF (\\r\\n)
+.br
+line endings\.
+.IP \(bu 2
+\fBascii\fP, \fBascii\-punctuation\fP
+.br
+Translates non\-ASCII Unicode whitespace and punctuation to the closest
+.br
+ASCII equivalents, while leaving other non\-ASCII characters untouched\.
+.br
+This is helpful for soure\-code samples that have been formatted for display
+.br
+with typographic quotes, em dashes, and the like, which usually makes the
+.br
+code indigestible to compilers/interpreters\.
 
 .RE
-.P
-You may specify mode values as options directly; e\.g\., \fB\-\-fp\fP or \fB\-\-flat\-para\fP
+.IP \(bu 2
+\fB\-i[<backup\-suffix>]\fP, \fB\-\-in\-place[=<backup\-suffix>]\fP
 .br
-in lieu of  \fB\-m fp\fP or \fB\-\-mode fp\fP or \fB\-\-mode flat\-para\fP\|\.
+Updates the specified files \fIin place\fR; that is, the results of the
+.br
+normalization are written back to the input file, and no stdout output is
+.br
+produced\. 
+If \fB<backup\-suffix>\fP is specified (recommended), a backup copy of each
+.br
+input file is made first, simply by appending the suffix to the filename\.  
+
+.RE
 .SH STANDARD OPTIONS
 .P
 All standard options provide information only\.
@@ -134,8 +189,10 @@ Empty output lines are represented by \fB~\fP\|\.
 .P
 .RS 2
 .nf
+## CONDENSING EXAMPLES:
+
 # Single\-line input \- no mode needed\.
-$ nws $'  one \\t\\t two  three   '
+$ nws <<< $'  one \\t\\t two  three   '
 one two three
 
 # Default: multi\-paragraph mode (`\-m mp` or `\-\-mode multi\-para`)
@@ -165,6 +222,22 @@ three
 # Single\-line mode
 $ nws \-\-sl <<<$'  one two\\n  three '
 one two three
+
+## TRANSLITERATION EXAMPLES:
+
+# Converts a CRLF line\-endings file (Windows) to a LF\-only file (Unix)\.
+# No output is produced, because the file is updated in\-place; a backup
+# of the original file is created with suffix '\.bak'\. 
+$ nws \-\-mode lf \-\-in\-place=\.bak from\-windows\.txt
+
+# Converts a LF\-only file (Unix) to a CRLF line\-endings file (Windows)\.
+# No output is produced, because the file is updated in\-place; since no
+# backup suffix is specified, no backup file is created\.
+$ nws \-\-crlf \-i from\-unix\.txt
+
+# Converts select Unicode whitespace and punctuation chars\. to their 
+# closest ASCII equivalents and sends the output to a different file\. 
+$ nws \-\-ascii unicode\-punct\.txt > ascii\-punct\.txt
 .fi
 .RE
 

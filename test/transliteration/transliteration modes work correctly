@@ -11,8 +11,13 @@ PATH=${PWD%%/test*}/bin:$PATH
 # Helper function for error reporting.
 die() { (( $# > 0 )) && echo "$*" >&2; exit 1; }
 
-nws -Z && exit
+res=$(nws --lf <<<$'hi\r')
+[[ $res == 'hi' ]] || die "Transliteration to \n failed"
 
-nws -m 0 -Z && exit
+res=$(nws --crlf <<<'hi')
+[[ $res == $'hi\r' ]] || die "Transliteration to \r\n failed"
+
+res=$(nws --ascii <<<$'hi,\xc2\xa0\xe2\x80\x9cthere\xe2\x80\x9d')
+[[ $res == $'hi, "there"' ]] || die "Transliteration to ASCII punctuation failed"
 
 exit 0

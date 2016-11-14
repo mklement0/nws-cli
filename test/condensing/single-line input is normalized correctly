@@ -11,7 +11,6 @@ PATH=${PWD%%/test*}/bin:$PATH
 # Helper function for error reporting.
 die() { (( $# > 0 )) && echo "$*" >&2; exit 1; }
 
-
-res=$(nws $'  \t    I\t  \t    am  normalized.   \t')
+res=$(nws <<<$'  \t    I\t  \t    am  normalized.   \t')
 
 [[ $res == 'I am normalized.' ]] || die
