@@ -63,8 +63,8 @@ $ nws --crlf -i from-unix.txt
 # Converts select Unicode whitespace and punctuation chars. to their 
 # closest ASCII equivalents and sends the output to a different file.
 # Note that any other non-ASCII characters are left untouched.
-# Helpful for converting code samples that were formatted display back to
-# valid sourc code. 
+# Helpful for converting code samples that were formatted for display back to
+# valid source code. 
 $ nws --ascii unicode-punct.txt > ascii-punct.txt 
 
 ```
@@ -231,6 +231,9 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.3.1](https://github.com/mklement0/nws-cli/compare/v0.3.0...v0.3.1)** (2016-12-10):
+  * [doc] Copy-editing in read-me file.
 
 * **[v0.3.0](https://github.com/mklement0/nws-cli/compare/v0.2.0...v0.3.0)** (2016-11-13):
   * [BREAKING CHANGE] `nws` is now file-based: operands are interpreted as 

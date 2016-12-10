@@ -4,6 +4,9 @@ Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
 
+* **[v0.3.1](https://github.com/mklement0/nws-cli/compare/v0.3.0...v0.3.1)** (2016-12-10):
+  * [doc] Copy-editing in read-me file.
+
 * **[v0.3.0](https://github.com/mklement0/nws-cli/compare/v0.2.0...v0.3.0)** (2016-11-13):
   * [BREAKING CHANGE] `nws` is now file-based: operands are interpreted as 
     filenames, and option `-i` allows in-place updating. Use stdin to provide
