@@ -4,7 +4,7 @@
 
 kTHIS_NAME=${BASH_SOURCE##*/}
 kTHIS_HOMEPAGE='https://github.com/mklement0/nws-cli'
-kTHIS_VERSION='v0.3.1' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
+kTHIS_VERSION='v0.3.2' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
 
 unset CDPATH  # To prevent unexpected `cd` behavior.
 
@@ -533,11 +533,11 @@ for (( i = 0; i < numIterations; ++i )); do
       normalizeWhiteSpace "$nwsMode" "$@" || die
       ;;
     # whitespace transliteration modes
-    4) # to CRLF line endings
-      awk -v ORS='\r\n' 1 "$@" || die
+    4) # to CRLF line endings - must be idempotent if the input already has the target line endings
+      awk -v ORS='\r\n' '{ sub("\r$", ""); print }' "$@" || die
       ;;
-    5) # to LF-only line endings
-      awk '{ sub("\r$", ""); print }' "$@" || die
+    5) # to LF-only line endings - must be idempotent if the input already has the target line endings
+      awk               '{ sub("\r$", ""); print }' "$@" || die
       ;;
     6) # Unicode whitespace+punctuation to ASCII equivalents
       toAsciiWhitespaceAndPunctuation "$@" || die
