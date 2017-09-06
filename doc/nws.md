@@ -89,7 +89,7 @@ stdout output).
     * `ascii`, `ascii-punctuation`  
     Translates non-ASCII Unicode whitespace and punctuation to the closest  
     ASCII equivalents, while leaving other non-ASCII characters untouched.  
-    This is helpful for soure-code samples that have been formatted for display  
+    This is helpful for source-code samples that have been formatted for display  
     with typographic quotes, em dashes, and the like, which usually makes the  
     code indigestible to compilers/interpreters.
 

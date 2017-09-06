@@ -4,7 +4,7 @@
 
 kTHIS_NAME=${BASH_SOURCE##*/}
 kTHIS_HOMEPAGE='https://github.com/mklement0/nws-cli'
-kTHIS_VERSION='v0.3.2' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
+kTHIS_VERSION='v0.3.3' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
 
 unset CDPATH  # To prevent unexpected `cd` behavior.
 
@@ -460,7 +460,7 @@ if (( $# )); then # filename operands given
 
   # Make sure all files exists and are both readable and writable.
   errMsgSuffix=
-  (( inPlaceUpdating )) && errMsgSuffix=$'\nNo files were modified.'
+  (( inPlaceUpdating )) && errMsgSuffix=$'\nNone of the '$#' input file(s) were modified.' # !! With xargs and a large input set that necessitates multiple `nws` calls, this error message may be misleading.
   for f; do
     [[ -L $f && ! -e $f ]] && die "File is a broken symlink: $f""$errMsgSuffix"
     [[ ! -e $f ]] && die "No such file: $f""$errMsgSuffix"
@@ -680,7 +680,7 @@ stdout output).
     * `ascii`, `ascii-punctuation`  
     Translates non-ASCII Unicode whitespace and punctuation to the closest  
     ASCII equivalents, while leaving other non-ASCII characters untouched.  
-    This is helpful for soure-code samples that have been formatted for display  
+    This is helpful for source-code samples that have been formatted for display  
     with typographic quotes, em dashes, and the like, which usually makes the  
     code indigestible to compilers/interpreters.
 

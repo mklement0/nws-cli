@@ -4,6 +4,12 @@ Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
 
+* **[v0.3.3](https://github.com/mklement0/nws-cli/compare/v0.3.2...v0.3.3)** (2017-09-05):
+  * [enhancement] Error message for -i mode improved to reflect the count of input files in case the pre-updating check fails; 
+                  this is an improvement with potentially batched `xargs`-mediated invocations to at least provide a hint that only
+                  a given _batch_ failed.
+  * [doc] Fixed typo in man page.
+
 * **[v0.3.2](https://github.com/mklement0/nws-cli/compare/v0.3.1...v0.3.2)** (2016-12-11):
   * [fix] Mode `--crlf` is now idempotent with input that is already CRLF-
           terminated (previously, an extra CR was mistakenly added).
