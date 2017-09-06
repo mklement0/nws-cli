@@ -91,7 +91,10 @@ stdout output).
     ASCII equivalents, while leaving other non-ASCII characters untouched.  
     This is helpful for source-code samples that have been formatted for display  
     with typographic quotes, em dashes, and the like, which usually makes the  
-    code indigestible to compilers/interpreters.
+    code indigestible to compilers/interpreters.  
+    IMPORTANT: This mode only works with PROPERLY ENCODED UTF-8 FILES.  
+               On BSD/macOS systems, an improperly encoded input file will  
+               result in a 'sed: RE error: illegal byte sequence' error.
 
   * `-i[<backup-suffix>]`, `--in-place[=<backup-suffix>]`  
   Updates the specified files *in place*; that is, the results of the  

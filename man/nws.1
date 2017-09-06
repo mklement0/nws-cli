@@ -1,4 +1,4 @@
-.TH "NWS" "1" "September 2017" "v0.3.3" ""
+.TH "NWS" "1" "September 2017" "v0.3.4" ""
 .SH "NAME"
 \fBnws\fR \- normalize whitespace
 .SH SYNOPSIS
@@ -135,6 +135,15 @@ This is helpful for source\-code samples that have been formatted for display
 with typographic quotes, em dashes, and the like, which usually makes the
 .br
 code indigestible to compilers/interpreters\.
+.br
+IMPORTANT: This mode only works with PROPERLY ENCODED UTF\-8 FILES\.  
+.P
+.RS 2
+.nf
+     On BSD/macOS systems, an improperly encoded input file will  
+     result in a 'sed: RE error: illegal byte sequence' error\.
+.fi
+.RE
 
 .RE
 .IP \(bu 2

@@ -4,6 +4,9 @@ Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
 
+* **[v0.3.4](https://github.com/mklement0/nws-cli/compare/v0.3.3...v0.3.4)** (2017-09-06):
+  * [doc] Clarified that `--mode ascii` (`--asci`) only works with properly encoded UTF-8 files.
+
 * **[v0.3.3](https://github.com/mklement0/nws-cli/compare/v0.3.2...v0.3.3)** (2017-09-05):
   * [enhancement] Error message for -i mode improved to reflect the count of input files in case the pre-updating check fails; 
                   this is an improvement with potentially batched `xargs`-mediated invocations to at least provide a hint that only

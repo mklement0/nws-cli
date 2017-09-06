@@ -45,8 +45,6 @@ or read the [manual](doc/nws.md).
 
 # Examples
 
-Note:
-
 ## Transliteration Examples
 
 ```shell
@@ -65,6 +63,7 @@ $ nws --crlf -i from-unix.txt
 # Note that any other non-ASCII characters are left untouched.
 # Helpful for converting code samples that were formatted for display back to
 # valid source code. 
+# IMPORTANT: This only works with properly encoded UTF-8 files.
 $ nws --ascii unicode-punct.txt > ascii-punct.txt 
 
 ```
@@ -231,6 +230,9 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.3.4](https://github.com/mklement0/nws-cli/compare/v0.3.3...v0.3.4)** (2017-09-06):
+  * [doc] Clarified that `--mode ascii` (`--asci`) only works with properly encoded UTF-8 files.
 
 * **[v0.3.3](https://github.com/mklement0/nws-cli/compare/v0.3.2...v0.3.3)** (2017-09-05):
   * [enhancement] Error message for -i mode improved to reflect the count of input files in case the pre-updating check fails; 

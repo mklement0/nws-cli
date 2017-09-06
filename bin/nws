@@ -4,7 +4,7 @@
 
 kTHIS_NAME=${BASH_SOURCE##*/}
 kTHIS_HOMEPAGE='https://github.com/mklement0/nws-cli'
-kTHIS_VERSION='v0.3.3' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
+kTHIS_VERSION='v0.3.4' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
 
 unset CDPATH  # To prevent unexpected `cd` behavior.
 
@@ -343,6 +343,13 @@ toAsciiWhitespaceAndPunctuation() {
   sedCmds+='y#‸⁁‹›⁄⁓⁎⁕⁏⁚#^^<>/~**;:#;'
 
   # Invoke sed with the list of commands, with stdin input.
+  # !! Since the commands rely on processing UTF-8-encoded chars. (multi-byte), 
+  # !! we mustn't invoke Sed with LC_ALL=C.
+  # !! The price we pay is that this only works with properly UTF-8-encoded
+  # !! input files.
+  # !! The symptom with invalid files depends on the Sed implementation:
+  # !!  * GNU Sed silently *ignores* invalid chars.
+  # !!  * BSD/macOS Sed *fails* with "invalid byte sequence"
   sed "$sedCmds" "$@"
   
 }
@@ -682,7 +689,10 @@ stdout output).
     ASCII equivalents, while leaving other non-ASCII characters untouched.  
     This is helpful for source-code samples that have been formatted for display  
     with typographic quotes, em dashes, and the like, which usually makes the  
-    code indigestible to compilers/interpreters.
+    code indigestible to compilers/interpreters.  
+    IMPORTANT: This mode only works with PROPERLY ENCODED UTF-8 FILES.  
+               On BSD/macOS systems, an improperly encoded input file will  
+               result in a 'sed: RE error: illegal byte sequence' error.
 
   * `-i[<backup-suffix>]`, `--in-place[=<backup-suffix>]`  
   Updates the specified files *in place*; that is, the results of the  
